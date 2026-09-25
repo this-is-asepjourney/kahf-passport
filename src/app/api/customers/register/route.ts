@@ -32,14 +32,14 @@ export async function POST(request: NextRequest) {
     const idToken = authorization.split('Bearer ')[1];
     const decodedToken = await adminAuth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
-    const phoneNumber = decodedToken.phone_number;
-
-    if (!phoneNumber) {
-      return NextResponse.json({ error: 'Nomor HP tidak ditemukan di token' }, { status: 400 });
-    }
-
     const body = await request.json();
-    const { fullName, birthDate, gender, city, consentVersion, password } = body;
+    const { fullName, birthDate, gender, city, consentVersion, password, phone } = body;
+
+    const phoneNumber = phone;
+    
+    if (!phoneNumber) {
+      return NextResponse.json({ error: 'Nomor HP wajib diisi' }, { status: 400 });
+    }
 
     if (!fullName) {
       return NextResponse.json({ error: 'Nama wajib diisi' }, { status: 400 });
