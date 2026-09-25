@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: firebaseUser.email,
         phone: firebaseUser.phoneNumber,
         displayName: firebaseUser.displayName,
-        role: claims.role ?? null,
+        role: claims.role ?? 'customer',
         storeId: claims.storeId,
         regionId: claims.regionId,
         claims,

@@ -50,8 +50,23 @@ export default function BaScanPage() {
           }
 
           const token = match[1];
-          // Navigate to QR gateway which will handle routing
-          router.push(`/p/${token}`);
+          try {
+            // Import doc & getDoc dynamically or statically (we already import from 'firebase/firestore' in the file or we can just import them)
+            const { doc, getDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase/client');
+            
+            const tokenDoc = await getDoc(doc(db, 'qrTokens', token));
+            if (!tokenDoc.exists() || !tokenDoc.data()?.isActive) {
+              setError('QR Code tidak valid atau sudah kadaluarsa.');
+              setProcessing(false);
+              return;
+            }
+            const customerId = tokenDoc.data()?.customerId;
+            router.push(`/ba/customers/${customerId}`);
+          } catch (e) {
+            setError('Gagal memproses QR Code.');
+            setProcessing(false);
+          }
         },
         (err: string) => {
           // Ignore scan errors (just means QR not found in frame yet)
