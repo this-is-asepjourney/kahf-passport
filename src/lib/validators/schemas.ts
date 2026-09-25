@@ -65,10 +65,11 @@ export const quickRegisterCustomerSchema = z.object({
 
 // ---- Master data schemas ----
 export const productSchema = z.object({
-  categoryId: z.string().min(1),
-  sku: z.string().min(1).max(50),
-  name: z.string().min(1).max(200),
-  defaultPrice: z.number().positive(),
+  categoryId: z.string().min(1, 'Kategori wajib dipilih'),
+  sku: z.string().min(1, 'SKU wajib diisi').max(50),
+  name: z.string().min(1, 'Nama wajib diisi').max(200),
+  description: z.string().max(500).optional(),
+  defaultPrice: z.number().positive('Harga harus > 0'),
   isActive: z.boolean().default(true),
 });
 

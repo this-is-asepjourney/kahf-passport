@@ -139,7 +139,7 @@ export default function BaCustomerDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
+        <div className="w-8 h-8 rounded-full border-4 border-[#E2F0EF] border-t-[#2C5C59] animate-spin" />
       </div>
     );
   }
@@ -150,7 +150,7 @@ export default function BaCustomerDetailPage() {
         <div>
           <p className="text-4xl mb-2">🔍</p>
           <p className="text-gray-600">Customer tidak ditemukan</p>
-          <Link href="/ba/customers" className="mt-4 block text-purple-600 text-sm">← Kembali</Link>
+          <Link href="/ba/customers" className="mt-4 block text-[#2C5C59] text-sm">← Kembali</Link>
         </div>
       </div>
     );
@@ -248,7 +248,7 @@ export default function BaCustomerDetailPage() {
                         type="text"
                         placeholder="INV-..."
                         {...form.register('invoiceNo')}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all text-sm"
                       />
                       {form.formState.errors.invoiceNo && (
                         <p className="text-xs text-red-500 mt-1">{form.formState.errors.invoiceNo.message}</p>
@@ -259,7 +259,7 @@ export default function BaCustomerDetailPage() {
                       <input
                         type="datetime-local"
                         {...form.register('purchasedAt')}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all text-sm"
                       />
                     </div>
                   </div>
@@ -271,7 +271,7 @@ export default function BaCustomerDetailPage() {
                       <button
                         type="button"
                         onClick={() => append({ productId: '', qty: 1, unitPrice: 0 })}
-                        className="text-xs px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 font-semibold hover:bg-purple-100 transition-colors"
+                        className="text-xs px-3 py-1.5 rounded-full bg-[#E2F0EF] text-[#2C5C59] font-semibold hover:bg-[#cbe6e3] transition-colors"
                       >
                         + Tambah Produk
                       </button>
@@ -298,7 +298,7 @@ export default function BaCustomerDetailPage() {
                                 const product = products.find(p => p.id === e.target.value);
                                 if (product) form.setValue(`items.${index}.unitPrice`, product.defaultPrice);
                               }}
-                              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none bg-white font-medium text-gray-700"
+                              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none bg-white font-medium text-gray-700"
                             >
                               <option value="">Pilih Produk...</option>
                               {products.map(p => (
@@ -313,7 +313,7 @@ export default function BaCustomerDetailPage() {
                                   type="number"
                                   min={1}
                                   {...form.register(`items.${index}.qty`, { valueAsNumber: true })}
-                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none bg-white"
+                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none bg-white"
                                 />
                               </div>
                               <div className="flex-[2]">
@@ -322,7 +322,7 @@ export default function BaCustomerDetailPage() {
                                   type="number"
                                   min={0}
                                   {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
-                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none bg-white"
+                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none bg-white"
                                 />
                               </div>
                               <div className="flex-[2] text-right pb-2">
@@ -352,14 +352,14 @@ export default function BaCustomerDetailPage() {
                       ✨ Customer mendapat +{Math.floor(totalAmount / 10000)} Poin
                     </span>
                   </div>
-                  <span className="font-bold text-purple-700 text-2xl">{formatIDR(totalAmount)}</span>
+                  <span className="font-bold text-[#2C5C59] text-2xl">{formatIDR(totalAmount)}</span>
                 </div>
                 
                 <button
                   type="submit"
                   form="purchase-form"
                   disabled={submitting || totalAmount <= 0}
-                  className="w-full py-4 rounded-2xl gradient-hero text-white font-bold text-lg disabled:opacity-50 hover:opacity-90 transition-all duration-200 active:scale-95 shadow-xl shadow-purple-500/20"
+                  className="w-full py-4 rounded-2xl gradient-hero text-white font-bold text-lg disabled:opacity-50 hover:opacity-90 transition-all duration-200 active:scale-95 shadow-xl shadow-[#6DB9B2]/20"
                 >
                   {submitting ? 'Menyimpan...' : 'Simpan Transaksi'}
                 </button>
@@ -382,7 +382,7 @@ export default function BaCustomerDetailPage() {
                 <div
                   key={purchase.id}
                   className={`p-3 rounded-2xl border ${
-                    purchase.status === 'void' ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-purple-50 border-purple-100'
+                    purchase.status === 'void' ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-[#E2F0EF] border-[#6DB9B2]/30'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -391,7 +391,7 @@ export default function BaCustomerDetailPage() {
                       <p className="text-xs text-gray-500">{purchase.items.length} item · No. {purchase.invoiceNo}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-sm text-purple-700">{formatIDR(purchase.totalAmount)}</p>
+                      <p className="font-bold text-sm text-[#2C5C59]">{formatIDR(purchase.totalAmount)}</p>
                       <span className={`text-xs ${purchase.status === 'void' ? 'text-red-500' : 'text-green-600'}`}>
                         {purchase.status === 'void' ? 'Void' : 'Valid'}
                       </span>

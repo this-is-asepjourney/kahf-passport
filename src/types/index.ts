@@ -84,6 +84,7 @@ export interface Product {
   categoryId: string;
   sku: string;
   name: string;
+  description?: string;
   defaultPrice: number;
   isActive: boolean;
   createdAt: string;
