@@ -1,7 +1,32 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // For Firebase Hosting + Cloud Run deployment
+  output: 'standalone',
+
+  // Enable PWA-like features
+  poweredByHeader: false,
+
+  // Image optimization config
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+      },
+    ],
+  },
+
+  // Env validation
+  env: {
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
+  },
+
+  // Transpile Firebase packages for SSR
+  transpilePackages: ['firebase', 'react-qr-code'],
+
+  // Empty turbopack config (html5-qrcode is imported dynamically in browser-only code)
+  turbopack: {},
 };
 
 export default nextConfig;

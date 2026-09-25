@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Get custom claims from the ID token
       const tokenResult = await firebaseUser.getIdTokenResult();
-      const claims = tokenResult.claims as CustomClaims;
+      const claims = tokenResult.claims as unknown as CustomClaims;
 
       setUser({
         uid: firebaseUser.uid,

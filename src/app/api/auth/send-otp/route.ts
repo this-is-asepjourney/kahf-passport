@@ -30,26 +30,32 @@ export async function POST(request: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    // Send via Fonnte WhatsApp gateway
-    const gatewayUrl = process.env.WHATSAPP_GATEWAY_URL!;
-    const token = process.env.WHATSAPP_GATEWAY_TOKEN!;
+    const gatewayUrl = process.env.WHATSAPP_GATEWAY_URL;
+    const token = process.env.WHATSAPP_GATEWAY_TOKEN;
 
     const message = `Kode OTP Khaf Passport Anda: *${otp}*\n\nBerlaku 5 menit. Jangan bagikan kode ini ke siapapun.`;
 
-    const response = await fetch(gatewayUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: token,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        target: normalizedPhone,
-        message,
-      }),
-    });
+    if (gatewayUrl && token) {
+      const response = await fetch(gatewayUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          target: normalizedPhone,
+          message,
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error('WhatsApp gateway error');
+      if (!response.ok) {
+        throw new Error('WhatsApp gateway error');
+      }
+    } else {
+      console.log('\n======================================');
+      console.log(`[MOCK OTP] Dikirim ke ${normalizedPhone}`);
+      console.log(`KODE OTP: ${otp}`);
+      console.log('======================================\n');
     }
 
     return NextResponse.json({ success: true, message: 'OTP dikirim via WhatsApp' });

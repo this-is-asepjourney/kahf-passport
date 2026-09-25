@@ -24,8 +24,8 @@ export const registerSchema = z.object({
   birthDate: z.string().optional(),
   gender: z.enum(['male', 'female']).optional(),
   city: z.string().max(100).optional(),
-  consentAgreed: z.literal(true, {
-    errorMap: () => ({ message: 'Anda harus menyetujui kebijakan privasi' }),
+  consentAgreed: z.boolean().refine(val => val === true, {
+    message: 'Anda harus menyetujui kebijakan privasi',
   }),
 });
 

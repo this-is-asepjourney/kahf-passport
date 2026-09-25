@@ -6,7 +6,7 @@ const PROTECTED_ROUTES = ['/passport', '/ba', '/admin'];
 // Routes that redirect to home if already authenticated
 const AUTH_ROUTES = ['/login', '/register'];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check for session cookie (Firebase ID token stored in cookie)
@@ -15,15 +15,17 @@ export function middleware(request: NextRequest) {
   const isProtected = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
   const isAuthRoute = AUTH_ROUTES.some(route => pathname.startsWith(route));
 
-  if (isProtected && !sessionCookie) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
+  // Disabled for MVP since we are using Firebase client-side auth (IndexedDB)
+  // If you want server-side protection, you need to manually set the __session cookie upon login.
+  // if (isProtected && !sessionCookie) {
+  //   const loginUrl = new URL('/login', request.url);
+  //   loginUrl.searchParams.set('redirect', pathname);
+  //   return NextResponse.redirect(loginUrl);
+  // }
 
-  if (isAuthRoute && sessionCookie) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
+  // if (isAuthRoute && sessionCookie) {
+  //   return NextResponse.redirect(new URL('/', request.url));
+  // }
 
   return NextResponse.next();
 }
