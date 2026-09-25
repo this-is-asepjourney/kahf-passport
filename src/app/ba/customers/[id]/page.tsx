@@ -224,126 +224,148 @@ export default function BaCustomerDetailPage() {
           </div>
         )}
 
-        {/* Purchase Form */}
+        {/* Purchase Form Modal */}
         {showForm && (
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="bg-white rounded-3xl shadow-sm p-5 space-y-4 animate-in"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-gray-900">Input Pembelian</h3>
-              <button type="button" onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-sm">✕ Tutup</button>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">No. Struk <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                placeholder="INV-2024-001"
-                {...form.register('invoiceNo')}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
-              />
-              {form.formState.errors.invoiceNo && (
-                <p className="text-xs text-red-500 mt-1">{form.formState.errors.invoiceNo.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal & Waktu Pembelian</label>
-              <input
-                type="datetime-local"
-                {...form.register('purchasedAt')}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
-              />
-            </div>
-
-            {/* Items */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-gray-700">Item Produk <span className="text-red-500">*</span></label>
-                <button
-                  type="button"
-                  onClick={() => append({ productId: '', qty: 1, unitPrice: 0 })}
-                  className="text-xs text-purple-600 font-semibold hover:text-purple-700"
-                >
-                  + Tambah Item
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center p-0 sm:p-4 animate-in fade-in">
+            <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95">
+              <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h3 className="font-bold text-gray-900 text-lg">Catat Pembelian</h3>
+                <button type="button" onClick={() => setShowForm(false)} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center">
+                  ✕
                 </button>
               </div>
-              <div className="space-y-3">
-                {fields.map((field, index) => {
-                  const selectedProduct = products.find(p => p.id === form.watch(`items.${index}.productId`));
-                  return (
-                    <div key={field.id} className="p-3 rounded-2xl bg-gray-50 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-gray-500">Item {index + 1}</span>
-                        {fields.length > 1 && (
-                          <button type="button" onClick={() => remove(index)} className="text-xs text-red-500 hover:text-red-700">
-                            Hapus
-                          </button>
-                        )}
-                      </div>
-                      <select
-                        {...form.register(`items.${index}.productId`)}
-                        onChange={(e) => {
-                          form.setValue(`items.${index}.productId`, e.target.value);
-                          const product = products.find(p => p.id === e.target.value);
-                          if (product) form.setValue(`items.${index}.unitPrice`, product.defaultPrice);
-                        }}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none"
-                      >
-                        <option value="">Pilih Produk...</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>{p.name} — {formatIDR(p.defaultPrice)}</option>
-                        ))}
-                      </select>
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <label className="text-xs text-gray-500">Qty</label>
-                          <input
-                            type="number"
-                            min={1}
-                            {...form.register(`items.${index}.qty`, { valueAsNumber: true })}
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs text-gray-500">Harga/pcs</label>
-                          <input
-                            type="number"
-                            min={0}
-                            {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none"
-                          />
-                        </div>
-                      </div>
-                      {selectedProduct && (
-                        <p className="text-xs text-gray-400">
-                          Subtotal: {formatIDR((form.watch(`items.${index}.qty`) || 0) * (form.watch(`items.${index}.unitPrice`) || 0))}
-                        </p>
+
+              <div className="p-5 overflow-y-auto flex-1">
+                <form
+                  id="purchase-form"
+                  onSubmit={form.handleSubmit(handleSubmit)}
+                  className="space-y-4"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">No. Struk <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        placeholder="INV-..."
+                        {...form.register('invoiceNo')}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
+                      />
+                      {form.formState.errors.invoiceNo && (
+                        <p className="text-xs text-red-500 mt-1">{form.formState.errors.invoiceNo.message}</p>
                       )}
                     </div>
-                  );
-                })}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                      <input
+                        type="datetime-local"
+                        {...form.register('purchasedAt')}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Items */}
+                  <div className="pt-2 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-bold text-gray-900">Keranjang <span className="text-red-500">*</span></label>
+                      <button
+                        type="button"
+                        onClick={() => append({ productId: '', qty: 1, unitPrice: 0 })}
+                        className="text-xs px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 font-semibold hover:bg-purple-100 transition-colors"
+                      >
+                        + Tambah Produk
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {fields.map((field, index) => {
+                        const selectedProduct = products.find(p => p.id === form.watch(`items.${index}.productId`));
+                        return (
+                          <div key={field.id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 space-y-3 relative group">
+                            {fields.length > 1 && (
+                              <button 
+                                type="button" 
+                                onClick={() => remove(index)} 
+                                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-100 text-red-600 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                ✕
+                              </button>
+                            )}
+                            <select
+                              {...form.register(`items.${index}.productId`)}
+                              onChange={(e) => {
+                                form.setValue(`items.${index}.productId`, e.target.value);
+                                const product = products.find(p => p.id === e.target.value);
+                                if (product) form.setValue(`items.${index}.unitPrice`, product.defaultPrice);
+                              }}
+                              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none bg-white font-medium text-gray-700"
+                            >
+                              <option value="">Pilih Produk...</option>
+                              {products.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                              ))}
+                            </select>
+                            
+                            <div className="flex items-end gap-3">
+                              <div className="flex-1">
+                                <label className="text-[10px] uppercase font-bold text-gray-400 block mb-1">Qty</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  {...form.register(`items.${index}.qty`, { valueAsNumber: true })}
+                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none bg-white"
+                                />
+                              </div>
+                              <div className="flex-[2]">
+                                <label className="text-[10px] uppercase font-bold text-gray-400 block mb-1">Harga (IDR)</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
+                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none bg-white"
+                                />
+                              </div>
+                              <div className="flex-[2] text-right pb-2">
+                                <p className="text-[10px] uppercase font-bold text-gray-400 mb-0.5">Subtotal</p>
+                                <p className="text-sm font-bold text-gray-900">
+                                  {formatIDR((form.watch(`items.${index}.qty`) || 0) * (form.watch(`items.${index}.unitPrice`) || 0))}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {form.formState.errors.items && (
+                      <p className="text-xs text-red-500 mt-2">{form.formState.errors.items.message}</p>
+                    )}
+                  </div>
+                </form>
               </div>
-              {form.formState.errors.items && (
-                <p className="text-xs text-red-500 mt-1">{form.formState.errors.items.message}</p>
-              )}
-            </div>
 
-            {/* Total */}
-            <div className="flex items-center justify-between p-3 rounded-2xl gradient-card border border-purple-100">
-              <span className="font-bold text-gray-900">Total</span>
-              <span className="font-bold text-purple-700 text-lg">{formatIDR(totalAmount)}</span>
+              {/* Footer / Total */}
+              <div className="p-5 bg-gray-50 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <span className="block text-sm font-bold text-gray-900">Total Tagihan</span>
+                    <span className="block text-xs text-[#6DB9B2] font-semibold mt-0.5">
+                      ✨ Customer mendapat +{Math.floor(totalAmount / 10000)} Poin
+                    </span>
+                  </div>
+                  <span className="font-bold text-purple-700 text-2xl">{formatIDR(totalAmount)}</span>
+                </div>
+                
+                <button
+                  type="submit"
+                  form="purchase-form"
+                  disabled={submitting || totalAmount <= 0}
+                  className="w-full py-4 rounded-2xl gradient-hero text-white font-bold text-lg disabled:opacity-50 hover:opacity-90 transition-all duration-200 active:scale-95 shadow-xl shadow-purple-500/20"
+                >
+                  {submitting ? 'Menyimpan...' : 'Simpan Transaksi'}
+                </button>
+              </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-4 rounded-2xl gradient-hero text-white font-semibold disabled:opacity-50 hover:opacity-90 transition-all duration-200 active:scale-95 shadow-lg"
-            >
-              {submitting ? 'Menyimpan...' : '✓ Simpan Pembelian'}
-            </button>
-          </form>
+          </div>
         )}
 
         {/* Purchase History */}

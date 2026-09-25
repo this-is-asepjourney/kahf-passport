@@ -25,6 +25,12 @@ export default function SkinProfilePage() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  
+  // Questionnaire state
+  const [isFilling, setIsFilling] = useState(false);
+  const [qSkinType, setQSkinType] = useState('normal');
+  const [qConcerns, setQConcerns] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
@@ -72,6 +78,45 @@ export default function SkinProfilePage() {
       </div>
     );
   }
+
+  const toggleConcern = (c: string) => {
+    setQConcerns(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setIsSubmitting(true);
+    try {
+      const { getAuth } = await import('firebase/auth');
+      const idToken = await getAuth().currentUser?.getIdToken();
+      const res = await fetch('/api/customers/skin-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          skinType: qSkinType,
+          concerns: qConcerns,
+          preferences: [],
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.awardedPoints > 0) {
+          alert(`Yeay! Anda mendapatkan ${data.awardedPoints} Poin Khaf karena telah mengisi Skin Profile!`);
+        }
+        setIsFilling(false);
+        loadData(); // reload
+      } else {
+        alert(data.error || 'Gagal menyimpan');
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan jaringan');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-24 relative">
@@ -135,11 +180,81 @@ export default function SkinProfilePage() {
               </div>
             )}
           </div>
+        ) : isFilling ? (
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-6 animate-in">
+            <div className="text-center mb-2">
+              <h2 className="font-bold text-[#2C5C59] text-xl mb-1">Kenali Kulit Anda</h2>
+              <p className="text-sm text-gray-500">Dapatkan +50 Poin dengan melengkapi profil!</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-3">Apa jenis kulit Anda?</label>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(SKIN_TYPE_LABELS).map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setQSkinType(val)}
+                    className={`py-3 px-4 rounded-xl text-sm font-medium border-2 transition-all ${
+                      qSkinType === val
+                        ? 'border-[#6DB9B2] bg-[#E2F0EF] text-[#2C5C59]'
+                        : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-3">Apa masalah kulit yang Anda hadapi? (Bisa &gt;1)</label>
+              <div className="flex flex-wrap gap-2">
+                {Object.keys(CONCERN_ICONS).map((concern) => {
+                  const isSelected = qConcerns.includes(concern);
+                  return (
+                    <button
+                      key={concern}
+                      onClick={() => toggleConcern(concern)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all flex items-center gap-2 ${
+                        isSelected
+                          ? 'border-[#D88C95] bg-[#FAEBEC] text-[#D88C95]'
+                          : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                      }`}
+                    >
+                      <span>{CONCERN_ICONS[concern]}</span> <span className="capitalize">{concern}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-4 flex gap-3">
+              <button 
+                onClick={() => setIsFilling(false)}
+                className="flex-1 py-4 rounded-2xl font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleSaveProfile}
+                disabled={isSubmitting}
+                className="flex-[2] py-4 rounded-2xl font-semibold text-white bg-[#6DB9B2] hover:opacity-90 disabled:opacity-50 active:scale-95 transition-all shadow-lg shadow-[#6DB9B2]/20"
+              >
+                {isSubmitting ? 'Menyimpan...' : 'Simpan & Ambil Poin'}
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 text-center">
             <div className="text-5xl mb-4">🧴</div>
             <h2 className="font-bold text-[#2C5C59] mb-2">Belum Ada Skin Profile</h2>
-            <p className="text-sm text-gray-500">Kunjungi Beauty Advisor kami di counter terdekat untuk mendapatkan analisis kulit gratis.</p>
+            <p className="text-sm text-gray-500 mb-6">Lengkapi profil kulit Anda sekarang untuk mendapatkan rekomendasi produk yang tepat.</p>
+            <button 
+              onClick={() => setIsFilling(true)}
+              className="w-full py-4 rounded-2xl font-semibold text-white gradient-hero shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all"
+            >
+              Isi Profil Kulit (+50 Poin)
+            </button>
           </div>
         )}
 

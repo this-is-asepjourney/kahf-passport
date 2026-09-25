@@ -70,15 +70,26 @@ export default function AdminBaPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="gradient-hero px-6 pt-12 pb-8">
+      <div className="gradient-hero px-6 pt-12 pb-16 relative">
         <div className="flex items-center gap-3">
           <Link href="/admin" className="text-white/80 hover:text-white">←</Link>
           <h1 className="text-xl font-bold text-white">Brand Ambassador</h1>
         </div>
-        <p className="text-white/60 text-sm mt-1 ml-8">Performa hari ini</p>
+        <p className="text-white/60 text-sm mt-1 ml-8 mb-4">Performa hari ini</p>
+        
+        {user?.role === 'super_admin' && (
+          <div className="absolute -bottom-5 left-6 right-6">
+            <Link 
+              href="/admin/users" 
+              className="block w-full py-3 bg-white text-purple-700 font-semibold text-center rounded-2xl shadow-lg hover:shadow-xl transition-all"
+            >
+              ➕ Tambah / Kelola Akses BA
+            </Link>
+          </div>
+        )}
       </div>
 
-      <div className="px-6 -mt-4 pb-8 space-y-3">
+      <div className="px-6 pt-10 pb-8 space-y-3">
         {dataLoading ? (
           <div className="flex justify-center py-8">
             <div className="w-8 h-8 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
