@@ -1,0 +1,43 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+// Routes that require authentication
+const PROTECTED_ROUTES = ['/passport', '/ba', '/admin'];
+// Routes that redirect to home if already authenticated
+const AUTH_ROUTES = ['/login', '/register'];
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Check for session cookie (Firebase ID token stored in cookie)
+  const sessionCookie = request.cookies.get('__session');
+
+  const isProtected = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+  const isAuthRoute = AUTH_ROUTES.some(route => pathname.startsWith(route));
+
+  if (isProtected && !sessionCookie) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (isAuthRoute && sessionCookie) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|icons|images).*)',
+  ],
+};
