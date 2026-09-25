@@ -1,8 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // For Firebase Hosting + Cloud Run deployment
-  output: 'standalone',
+  // Removed output: 'standalone' for native Vercel deployment
 
   // Enable PWA-like features
   poweredByHeader: false,
