@@ -12,6 +12,13 @@ export const phoneSchema = z.object({
     .regex(/^(\+62|62|0)8[1-9][0-9]{6,10}$/, 'Nomor HP tidak valid'),
 });
 
+export const loginPhoneSchema = z.object({
+  phone: z
+    .string()
+    .regex(/^(\+62|62|0)8[1-9][0-9]{6,10}$/, 'Nomor HP tidak valid'),
+  password: z.string().min(6, 'Password minimal 6 karakter'),
+});
+
 export const otpSchema = z.object({
   otp: z.string().length(6, 'OTP harus 6 digit').regex(/^\d+$/, 'OTP hanya angka'),
 });
@@ -21,6 +28,7 @@ export const registerSchema = z.object({
   phone: z
     .string()
     .regex(/^(\+62|62|0)8[1-9][0-9]{6,10}$/, 'Nomor HP tidak valid'),
+  password: z.string().min(6, 'Password minimal 6 karakter'),
   birthDate: z.string().optional(),
   gender: z.enum(['male', 'female']).optional(),
   city: z.string().max(100).optional(),
@@ -75,6 +83,7 @@ export const storeSchema = z.object({
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type PhoneFormValues = z.infer<typeof phoneSchema>;
+export type LoginPhoneFormValues = z.infer<typeof loginPhoneSchema>;
 export type OtpFormValues = z.infer<typeof otpSchema>;
 export type RegisterFormValues = z.infer<typeof registerSchema>;
 export type RecordPurchaseFormValues = z.infer<typeof recordPurchaseSchema>;

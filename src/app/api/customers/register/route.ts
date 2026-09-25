@@ -39,10 +39,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { fullName, birthDate, gender, city, consentVersion } = body;
+    const { fullName, birthDate, gender, city, consentVersion, password } = body;
 
     if (!fullName) {
       return NextResponse.json({ error: 'Nama wajib diisi' }, { status: 400 });
+    }
+
+    if (!password) {
+      return NextResponse.json({ error: 'Password wajib diisi' }, { status: 400 });
     }
 
     const db = adminDb();
@@ -134,7 +138,15 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    // Set role claim
+    // Set role claim and password/email for login
+    const email = `${phoneNumber.replace('+', '')}@kahf.id`;
+    await adminAuth().updateUser(uid, {
+      email,
+      password,
+    }).catch(err => {
+      console.warn('Failed to set email/password (might already exist):', err);
+    });
+
     await adminAuth().setCustomUserClaims(uid, { role: 'customer' });
 
     return NextResponse.json({ success: true, customerId, action: 'created' });

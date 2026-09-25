@@ -84,6 +84,8 @@ export default function RegisterPage() {
         },
         body: JSON.stringify({
           fullName: data.fullName,
+          phone: data.phone,
+          password: data.password,
           birthDate: data.birthDate,
           gender: data.gender,
           city: data.city,
@@ -249,6 +251,20 @@ export default function RegisterPage() {
                 />
                 {detailsForm.formState.errors.fullName && (
                   <p className="text-xs text-red-500 mt-1">{detailsForm.formState.errors.fullName.message}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="Minimal 6 karakter"
+                  {...detailsForm.register('password')}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
+                />
+                {detailsForm.formState.errors.password && (
+                  <p className="text-xs text-red-500 mt-1">{detailsForm.formState.errors.password.message}</p>
                 )}
               </div>
               <div>
