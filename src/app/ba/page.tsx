@@ -25,6 +25,12 @@ interface RecentCustomer {
   status: string;
 }
 
+interface FollowUpItem {
+  id: string;
+  fullName: string;
+  daysSincePurchase: number;
+}
+
 export default function BaDashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -40,6 +46,8 @@ export default function BaDashboardPage() {
   });
   const [storeName, setStoreName] = useState('');
   const [recentCustomers, setRecentCustomers] = useState<RecentCustomer[]>([]);
+  const [followUps, setFollowUps] = useState<FollowUpItem[]>([]);
+  const [featuredProduct, setFeaturedProduct] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -82,7 +90,10 @@ export default function BaDashboardPage() {
       const repeatCount = repeatSnap.data().count;
       const repeatPurchaseRate = totalCustomers > 0 ? Math.round((repeatCount / totalCustomers) * 100) : 0;
 
-      // 4. Get Recent Customers
+      // 4. Get Recent Customers & all customers for follow up
+      const customerDocsSnap = await getDocs(query(collection(db, 'customers'), where('registeredByBaId', '==', user.uid)));
+      const customerDocs = customerDocsSnap;
+      
       const recentQuery = query(
         collection(db, 'customers'),
         where('registeredByBaId', '==', user.uid),
@@ -100,12 +111,35 @@ export default function BaDashboardPage() {
         };
       });
 
+      // 5. Get Follow Ups
+      const followUpList: FollowUpItem[] = [];
+      const now = new Date();
+      customerDocs.docs.forEach(d => {
+        const data = d.data();
+        if (data.lastPurchaseAt) {
+          const lp = data.lastPurchaseAt.toDate();
+          const diffDays = Math.floor(Math.abs(now.getTime() - lp.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays >= 25) {
+            followUpList.push({ id: d.id, fullName: data.fullName || 'Tanpa Nama', daysSincePurchase: diffDays });
+          }
+        }
+      });
+      followUpList.sort((a, b) => b.daysSincePurchase - a.daysSincePurchase);
+      setFollowUps(followUpList.slice(0, 3));
+
+      // 6. Get Featured Product (just grab one active product for recommendation)
+      const productsQuery = query(collection(db, 'products'), where('isActive', '==', true), limit(1));
+      const productsSnap = await getDocs(productsQuery);
+      if (!productsSnap.empty) {
+        setFeaturedProduct({ id: productsSnap.docs[0].id, ...productsSnap.docs[0].data() });
+      }
+
       // Update State
       setStats({
         totalCustomers,
         ordersToday,
         totalSales,
-        pendingFollowUp: 7, // Dummy for now
+        pendingFollowUp: followUpList.length,
         repeatPurchaseRate,
         customersGrowth: 12, // Dummy for now
         ordersGrowth: 20 // Dummy for now
@@ -246,52 +280,46 @@ export default function BaDashboardPage() {
 
         {/* Rekomendasi Produk */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 flex flex-col">
-          <h2 className="font-bold text-gray-900 text-lg mb-6">Rekomendasi Produk</h2>
+          <h2 className="font-bold text-gray-900 text-lg mb-6">Produk Unggulan</h2>
           <div className="flex-1 rounded-2xl flex items-center justify-center p-6 flex-col border border-gray-100">
             <div className="w-40 h-40 bg-[#E2F0EF]/30 rounded-full mb-6 flex items-center justify-center">
                <span className="text-6xl">🧴</span>
             </div>
-            <h3 className="font-bold text-gray-900 text-center text-lg">Kahf Face Wash Series</h3>
-            <p className="text-sm text-gray-500 text-center mt-2">Untuk kulit berjerawat & berminyak</p>
-            <Link href="/ba/customers/new" className="mt-8 w-full text-center px-4 py-3 bg-[#2C5C59] text-white text-sm font-semibold rounded-xl hover:bg-[#1f4240] transition-colors shadow-lg shadow-[#6DB9B2]/20">
-              Lihat Detail
+            <h3 className="font-bold text-gray-900 text-center text-lg">{featuredProduct?.name || 'Kahf Face Wash Series'}</h3>
+            <p className="text-sm text-gray-500 text-center mt-2 line-clamp-2">{featuredProduct?.description || 'Rekomendasi terbaik untuk pelanggan Anda.'}</p>
+            <Link href="/ba/products" className="mt-8 w-full text-center px-4 py-3 bg-[#2C5C59] text-white text-sm font-semibold rounded-xl hover:bg-[#1f4240] transition-colors shadow-lg shadow-[#6DB9B2]/20">
+              Lihat Katalog
             </Link>
           </div>
         </div>
 
         {/* Notifikasi Follow Up */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-          <h2 className="font-bold text-gray-900 text-lg mb-6">Notifikasi Follow Up</h2>
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="w-11 h-11 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden shrink-0">
-                <span className="text-lg">👩</span>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900">Elsa Nanda</p>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">30 hari sejak pembelian face wash. Waktunya repurchase.</p>
-              </div>
-            </div>
-            <hr className="border-gray-50" />
-            <div className="flex items-start gap-4">
-              <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden shrink-0">
-                <span className="text-lg">👩</span>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900">Rani Septiani</p>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">Produk hampir habis, tawarkan promo paket bundel.</p>
-              </div>
-            </div>
-            <hr className="border-gray-50" />
-            <div className="flex items-start gap-4">
-              <div className="w-11 h-11 rounded-full bg-pink-100 flex items-center justify-center overflow-hidden shrink-0">
-                <span className="text-lg">👩</span>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900">Dewi Lestari</p>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">Ada rekomendasi produk sunscreen baru untuk kulit sensitif.</p>
-              </div>
-            </div>
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 flex flex-col">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="font-bold text-gray-900 text-lg">Notifikasi Follow Up</h2>
+            <Link href="/ba/follow-up" className="text-sm text-[#2C5C59] font-semibold hover:underline">
+              Lihat Semua
+            </Link>
+          </div>
+          <div className="space-y-6 flex-1">
+            {followUps.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-8">Tidak ada jadwal follow up saat ini.</p>
+            ) : (
+              followUps.map((f, i) => (
+                <div key={f.id}>
+                  <div className="flex items-start gap-4">
+                    <div className="w-11 h-11 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold overflow-hidden shrink-0">
+                      {f.fullName.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">{f.fullName}</p>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">{f.daysSincePurchase} hari sejak pembelian terakhir. Waktunya repurchase.</p>
+                    </div>
+                  </div>
+                  {i < followUps.length - 1 && <hr className="border-gray-50 mt-6" />}
+                </div>
+              ))
+            )}
           </div>
         </div>
         

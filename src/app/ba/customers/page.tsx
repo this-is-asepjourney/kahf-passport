@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 
@@ -16,21 +16,29 @@ interface CustomerResult {
   lastPurchaseAt: string | null;
 }
 
-export default function BaCustomersPage() {
+function CustomerSearchContent() {
   const { user } = useAuth();
-  const router = useRouter();
-  const [query, setQuery] = useState('');
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<CustomerResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  const handleSearch = async () => {
-    if (query.trim().length < 3) return;
+  useEffect(() => {
+    if (initialQuery && initialQuery.length >= 3) {
+      handleSearch(initialQuery);
+    }
+  }, [initialQuery]);
+
+  const handleSearch = async (searchStr: string = query) => {
+    if (searchStr.trim().length < 3) return;
     setLoading(true);
     setSearched(true);
     try {
       const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken();
-      const res = await fetch(`/api/customers/search?q=${encodeURIComponent(query)}`, {
+      const res = await fetch(`/api/customers/search?q=${encodeURIComponent(searchStr)}`, {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       const data = await res.json();
@@ -58,12 +66,12 @@ export default function BaCustomersPage() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch(query)}
               placeholder="Nama atau nomor HP..."
               className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
             />
             <button
-              onClick={handleSearch}
+              onClick={() => handleSearch(query)}
               disabled={loading || query.trim().length < 3}
               className="px-4 py-3 gradient-hero text-white rounded-xl font-semibold disabled:opacity-50 hover:opacity-90 transition-all active:scale-95 flex-shrink-0"
             >
@@ -135,5 +143,13 @@ export default function BaCustomersPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function BaCustomersPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Memuat...</div>}>
+      <CustomerSearchContent />
+    </Suspense>
   );
 }
