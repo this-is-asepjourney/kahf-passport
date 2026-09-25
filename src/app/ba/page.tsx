@@ -131,13 +131,13 @@ export default function BaDashboardPage() {
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       
       {/* Header & Search */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Halo, {user?.displayName ?? 'BA'}!</h1>
           <p className="text-sm text-gray-500 mt-1">Brand Ambassador - {storeName}</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="relative w-80">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="relative w-full md:w-80">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
             <input 
               type="text" 
@@ -152,7 +152,7 @@ export default function BaDashboardPage() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-full bg-[#E2F0EF] text-[#2C5C59] flex items-center justify-center text-xl shrink-0">👥</div>
@@ -207,7 +207,7 @@ export default function BaDashboardPage() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Customer Terbaru */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
