@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { recordPurchaseSchema, type RecordPurchaseFormValues } from '@/lib/validators/schemas';
-import type { Customer, Purchase, Product } from '@/types';
+import type { Customer, Purchase, Product, SkinProfile, Consultation } from '@/types';
 import { formatIDR, formatDateTime, formatDate, maskPhone } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -19,6 +19,8 @@ export default function BaCustomerDetailPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [skinProfile, setSkinProfile] = useState<SkinProfile | null>(null);
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -61,6 +63,26 @@ export default function BaCustomerDetailPage() {
         purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
       })) as Purchase[];
       setPurchases(allPurchases);
+
+      // Load Skin Profile
+      const skinProfileDoc = await getDoc(doc(db, 'skinProfiles', id));
+      if (skinProfileDoc.exists()) {
+        setSkinProfile({ id: skinProfileDoc.id, ...skinProfileDoc.data() } as SkinProfile);
+      }
+
+      // Load Consultations
+      const consultationsQ = query(
+        collection(db, 'consultations'),
+        where('customerId', '==', id),
+        orderBy('createdAt', 'desc')
+      );
+      const consultationsSnap = await getDocs(consultationsQ);
+      const allConsultations = consultationsSnap.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? d.data().createdAt,
+      })) as Consultation[];
+      setConsultations(allConsultations);
 
       // Load active products
       const productsQ = query(collection(db, 'products'), where('isActive', '==', true));
@@ -219,8 +241,60 @@ export default function BaCustomerDetailPage() {
               href={`/ba/customers/${customer.id}/consultation`}
               className="w-full py-4 rounded-3xl bg-white border-2 border-[#6DB9B2] text-[#6DB9B2] font-semibold hover:bg-[#6DB9B2] hover:text-white transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
             >
-              🧴 Konsultasi Kulit
+              {skinProfile ? '📝 Perbarui Konsultasi Kulit' : '🧴 Mulai Konsultasi Kulit'}
             </Link>
+          </div>
+        )}
+
+        {/* Skin Profile Info */}
+        {!showForm && skinProfile && (
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5">
+            <h3 className="font-bold text-[#2C5C59] mb-3 text-sm uppercase tracking-wider">Profil Kulit</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-[#E2F0EF] rounded-2xl p-4 text-center">
+                <span className="block text-2xl mb-1">🧴</span>
+                <span className="block text-xs text-gray-500 font-semibold uppercase">Tipe Kulit</span>
+                <span className="block font-bold text-[#2C5C59] capitalize">{skinProfile.skinType}</span>
+              </div>
+              <div className="bg-[#FAEBEC] rounded-2xl p-4 text-center">
+                <span className="block text-2xl mb-1">🎯</span>
+                <span className="block text-xs text-gray-500 font-semibold uppercase">Concern Utama</span>
+                <span className="block font-bold text-[#D88C95] truncate">
+                  {skinProfile.concerns?.length ? skinProfile.concerns[0] : '-'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Consultation History */}
+        {!showForm && consultations.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5">
+            <h3 className="font-bold text-gray-900 mb-4">Riwayat Konsultasi Kulit</h3>
+            <div className="space-y-3">
+              {consultations.map(consult => (
+                <div key={consult.id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-bold text-sm text-[#2C5C59]">{formatDate(consult.createdAt)}</p>
+                      <p className="text-xs text-gray-500">oleh {consult.baNameSnapshot}</p>
+                    </div>
+                    <span className="text-xs font-semibold px-2 py-1 bg-white border rounded-full capitalize">{consult.skinType}</span>
+                  </div>
+                  {consult.notes && <p className="text-sm text-gray-600 mt-2 mb-2 line-clamp-2">"{consult.notes}"</p>}
+                  {consult.recommendedProducts && consult.recommendedProducts.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <p className="text-xs font-bold text-gray-400 uppercase mb-2">Rekomendasi Produk:</p>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        {consult.recommendedProducts.map(p => (
+                          <li key={p.productId}>• {p.productName}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
