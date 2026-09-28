@@ -23,6 +23,7 @@ export default function AdminProductsPage() {
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ProductFormValues>({
@@ -61,32 +62,54 @@ export default function AdminProductsPage() {
     setProducts(prev => prev.map(p => p.id === product.id ? { ...p, isActive: !p.isActive } : p));
   };
 
+  const openAddModal = () => {
+    setEditingProduct(null);
+    reset({
+      isActive: true,
+      sku: `PRD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+    });
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (product: Product) => {
+    setEditingProduct(product);
+    reset({
+      name: product.name,
+      description: product.description || '',
+      categoryId: product.categoryId,
+      sku: product.sku,
+      defaultPrice: product.defaultPrice,
+      imageUrl: product.imageUrl,
+      isActive: product.isActive,
+    });
+    setIsModalOpen(true);
+  };
+
   const onSubmit = async (data: ProductFormValues) => {
     if (user?.role !== 'super_admin') return;
     setIsSubmitting(true);
     try {
-      const newProduct = {
-        ...data,
-        createdAt: serverTimestamp(),
-      };
-      const docRef = await addDoc(collection(db, 'products'), newProduct);
-      
-      // Update local state to reflect new product
-      setProducts(prev => [{
-        id: docRef.id,
-        ...data,
-        createdAt: new Date().toISOString()
-      } as unknown as Product, ...prev]);
-      
-      // Close modal and reset
+      if (editingProduct) {
+        // Edit mode
+        await updateDoc(doc(db, 'products', editingProduct.id), data);
+        setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...data } : p));
+      } else {
+        // Add mode
+        const newProduct = {
+          ...data,
+          createdAt: serverTimestamp(),
+        };
+        const docRef = await addDoc(collection(db, 'products'), newProduct);
+        setProducts(prev => [{
+          id: docRef.id,
+          ...data,
+          createdAt: new Date().toISOString()
+        } as unknown as Product, ...prev]);
+      }
       setIsModalOpen(false);
-      reset({
-        isActive: true,
-        sku: `PRD-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-      });
     } catch (error) {
-      console.error('Error adding product:', error);
-      alert('Gagal menambah produk.');
+      console.error('Error saving product:', error);
+      alert('Gagal menyimpan produk.');
     } finally {
       setIsSubmitting(false);
     }
@@ -105,8 +128,8 @@ export default function AdminProductsPage() {
         </div>
         {user?.role === 'super_admin' && (
           <button 
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-[#2C5C59] text-white font-medium rounded-xl hover:bg-[#1f4240] transition-colors"
+            onClick={openAddModal}
+            className="px-4 py-2 bg-[#2C5C59] text-white font-medium rounded-xl hover:bg-[#1f4240] transition-colors shadow-sm"
           >
             + Tambah Produk
           </button>
@@ -142,14 +165,19 @@ export default function AdminProductsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {product.imageUrl ? (
-                          <img src={product.imageUrl} alt={product.name} className="w-10 h-10 rounded-xl object-cover" />
+                          <img src={product.imageUrl} alt={product.name} className="w-10 h-10 rounded-xl object-cover shadow-sm border border-gray-100" />
                         ) : (
                           <div className="w-10 h-10 rounded-xl bg-[#E2F0EF] text-[#2C5C59] flex items-center justify-center text-lg">
                             🧴
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold text-gray-900">{product.name}</p>
+                          <p 
+                            className="font-bold text-gray-900 cursor-pointer hover:text-[#2C5C59] transition-colors"
+                            onClick={() => user?.role === 'super_admin' && openEditModal(product)}
+                          >
+                            {product.name}
+                          </p>
                           <p className="text-xs text-gray-500 max-w-xs truncate">{product.description || 'Tidak ada deskripsi'}</p>
                         </div>
                       </div>
@@ -184,111 +212,116 @@ export default function AdminProductsPage() {
         )}
       </div>
 
-      {/* Add Product Modal */}
+      {/* Add/Edit Product Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4">
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          <div className="relative bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden animate-in">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="font-bold text-lg text-gray-900">Tambah Produk Baru</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10 sm:rounded-t-3xl rounded-t-3xl">
+              <h2 className="font-bold text-lg text-gray-900">
+                {editingProduct ? 'Edit Produk' : 'Tambah Produk Baru'}
+              </h2>
+              <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center font-bold">✕</button>
             </div>
             
-            <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Foto Produk</label>
-                <Controller
-                  name="imageUrl"
-                  control={control}
-                  render={({ field }) => (
-                    <ImageUpload
-                      onUploadSuccess={(url) => field.onChange(url)}
-                      folder="products"
-                      currentImage={field.value}
-                      className="w-full max-w-[160px] mx-auto aspect-square rounded-2xl overflow-hidden shadow-sm border border-gray-200"
-                      label="Unggah Foto"
-                    />
-                  )}
-                />
-                {errors.imageUrl && <p className="text-xs text-red-500 mt-1 text-center">{errors.imageUrl.message}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Produk</label>
-                <input
-                  type="text"
-                  placeholder="Mis. Kahf Face Wash"
-                  {...register('name')}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all"
-                />
-                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi Produk</label>
-                <textarea
-                  placeholder="Deskripsi singkat produk..."
-                  {...register('description')}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all resize-none h-20"
-                />
-                {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description.message}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            <div className="overflow-y-auto flex-1">
+              <form id="product-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                  <select
-                    {...register('categoryId')}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all bg-white"
-                  >
-                    <option value="">Pilih Kategori</option>
-                    {categories.length > 0 ? categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    )) : (
-                      <option value="umum">Umum</option>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 text-center">Foto Produk (Opsional)</label>
+                  <Controller
+                    name="imageUrl"
+                    control={control}
+                    render={({ field }) => (
+                      <ImageUpload
+                        onUploadSuccess={(url) => field.onChange(url)}
+                        folder="products"
+                        currentImage={field.value}
+                        className="w-full max-w-[140px] mx-auto aspect-square rounded-2xl overflow-hidden shadow-sm border border-gray-200"
+                        label="Unggah Foto"
+                      />
                     )}
-                  </select>
-                  {errors.categoryId && <p className="text-xs text-red-500 mt-1">{errors.categoryId.message}</p>}
+                  />
+                  {errors.imageUrl && <p className="text-xs text-red-500 mt-1 text-center">{errors.imageUrl.message}</p>}
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">SKU / Kode</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Nama Produk <span className="text-red-500">*</span></label>
                   <input
                     type="text"
-                    {...register('sku')}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all"
+                    placeholder="Mis. Kahf Face Wash"
+                    {...register('name')}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all"
                   />
-                  {errors.sku && <p className="text-xs text-red-500 mt-1">{errors.sku.message}</p>}
+                  {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Harga (Rp)</label>
-                <input
-                  type="number"
-                  placeholder="Mis. 45000"
-                  {...register('defaultPrice', { valueAsNumber: true })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all"
-                />
-                {errors.defaultPrice && <p className="text-xs text-red-500 mt-1">{errors.defaultPrice.message}</p>}
-              </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Deskripsi Produk</label>
+                  <textarea
+                    placeholder="Deskripsi singkat produk..."
+                    {...register('description')}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all resize-none h-24"
+                  />
+                  {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description.message}</p>}
+                </div>
 
-              <div className="pt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 bg-[#2C5C59] text-white font-medium rounded-xl hover:bg-[#1f4240] disabled:opacity-50 transition-colors"
-                >
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan Produk'}
-                </button>
-              </div>
-            </form>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Kategori <span className="text-red-500">*</span></label>
+                    <select
+                      {...register('categoryId')}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all bg-white"
+                    >
+                      <option value="">Pilih Kategori...</option>
+                      {categories.length > 0 ? categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      )) : (
+                        <option value="umum">Umum</option>
+                      )}
+                    </select>
+                    {errors.categoryId && <p className="text-xs text-red-500 mt-1">{errors.categoryId.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">SKU / Kode <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      {...register('sku')}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all font-mono text-sm"
+                    />
+                    {errors.sku && <p className="text-xs text-red-500 mt-1">{errors.sku.message}</p>}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Harga (IDR) <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    placeholder="Mis. 45000"
+                    {...register('defaultPrice', { valueAsNumber: true })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all font-medium text-gray-900"
+                  />
+                  {errors.defaultPrice && <p className="text-xs text-red-500 mt-1">{errors.defaultPrice.message}</p>}
+                </div>
+              </form>
+            </div>
+
+            <div className="p-5 border-t border-gray-100 bg-gray-50 flex gap-3 sm:rounded-b-3xl shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="flex-[1] px-4 py-3.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                form="product-form"
+                disabled={isSubmitting}
+                className="flex-[2] px-4 py-3.5 bg-[#2C5C59] text-white font-bold rounded-xl hover:bg-[#1f4240] disabled:opacity-50 transition-colors shadow-lg shadow-[#2C5C59]/20"
+              >
+                {isSubmitting ? 'Menyimpan...' : (editingProduct ? 'Simpan Perubahan' : 'Tambah Produk')}
+              </button>
+            </div>
           </div>
         </div>
       )}
