@@ -25,7 +25,31 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q')?.trim() ?? '';
 
-    if (query.length < 3) {
+    if (query.length === 0) {
+      // Default to returning the BA's recent 20 customers
+      const db = adminDb();
+      const snap = await db
+        .collection('customers')
+        .orderBy('createdAt', 'desc')
+        .limit(20)
+        .get();
+
+      const customers = snap.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          fullName: data.fullName,
+          phoneDisplay: maskPhone(data.phone),
+          memberNo: data.memberNo,
+          status: data.status,
+          purchaseCount: data.purchaseCount,
+          lastPurchaseAt: data.lastPurchaseAt?.toDate().toISOString() ?? null,
+        };
+      });
+      return NextResponse.json({ customers });
+    }
+
+    if (query.length > 0 && query.length < 3) {
       return NextResponse.json({ customers: [] });
     }
 

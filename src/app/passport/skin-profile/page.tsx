@@ -14,16 +14,30 @@ const SKIN_TYPE_LABELS: Record<string, string> = {
 };
 
 const CONCERN_ICONS: Record<string, string> = {
-  jerawat: '🔴', kusam: '🌑', 'flek hitam': '⬛', kering: '🏜️',
-  berminyak: '💧', pori: '⭕', kerutan: '〰️', sensitif: '🌸',
+  jerawat: '🔴',
+  'kulit kusam': '🌑',
+  kusam: '🌑',
+  'flek hitam': '⬛',
+  'kulit kering': '🏜️',
+  kering: '🏜️',
+  berminyak: '💧',
+  'pori besar': '⭕',
+  pori: '⭕',
+  kerutan: '〰️',
+  sensitif: '🌸',
 };
+
+function getConcernIcon(concern: string): string {
+  const key = concern.toLowerCase();
+  return CONCERN_ICONS[key] ?? '💡';
+}
 
 export default function SkinProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [skinProfile, setSkinProfile] = useState<SkinProfile | null>(null);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
-  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [lastBaName, setLastBaName] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(true);
   
   // Questionnaire state
@@ -34,42 +48,55 @@ export default function SkinProfilePage() {
 
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
-    if (!loading && user) loadData();
-  }, [user, loading]);
 
-  const loadData = async () => {
-    if (!user) return;
-    try {
-      // Find customer
-      const custQ = query(collection(db, 'customers'), where('uid', '==', user.uid));
-      const custSnap = await getDocs(custQ);
-      if (custSnap.empty) return;
-      const cId = custSnap.docs[0].id;
-      setCustomerId(cId);
+    const loadData = async () => {
+      if (!user) return;
+      try {
+        // Find customer
+        const custQ = query(collection(db, 'customers'), where('uid', '==', user.uid));
+        const custSnap = await getDocs(custQ);
+        if (custSnap.empty) return;
+        const cId = custSnap.docs[0].id;
 
-      // Get skin profile
-      const profileDoc = await getDoc(doc(db, 'skinProfiles', cId));
-      if (profileDoc.exists()) {
-        setSkinProfile({ id: profileDoc.id, ...profileDoc.data() } as SkinProfile);
+        // Get skin profile
+        const profileDoc = await getDoc(doc(db, 'skinProfiles', cId));
+        if (profileDoc.exists()) {
+          const profile = { id: profileDoc.id, ...profileDoc.data() } as SkinProfile;
+          setSkinProfile(profile);
+          // Pre-fill edit form with existing data
+          setQSkinType(profile.skinType);
+          setQConcerns(profile.concerns ?? []);
+          // Get BA name who last updated
+          if (profile.updatedByBaId) {
+            try {
+              const baSnap = await getDocs(query(collection(db, 'baProfiles'), where('uid', '==', profile.updatedByBaId)));
+              if (!baSnap.empty) {
+                setLastBaName(baSnap.docs[0].data().name ?? '');
+              }
+            } catch { /* skip if not found */ }
+          }
+        }
+
+        // Get consultations
+        const consultQ = query(
+          collection(db, 'consultations'),
+          where('customerId', '==', cId),
+          orderBy('createdAt', 'desc')
+        );
+        const consultSnap = await getDocs(consultQ);
+        setConsultations(consultSnap.docs.map(d => ({
+          id: d.id, ...d.data(),
+          createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? d.data().createdAt,
+        })) as Consultation[]);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setDataLoading(false);
       }
+    };
 
-      // Get consultations
-      const consultQ = query(
-        collection(db, 'consultations'),
-        where('customerId', '==', cId),
-        orderBy('createdAt', 'desc')
-      );
-      const consultSnap = await getDocs(consultQ);
-      setConsultations(consultSnap.docs.map(d => ({
-        id: d.id, ...d.data(),
-        createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? d.data().createdAt,
-      })) as Consultation[]);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setDataLoading(false);
-    }
-  };
+    if (!loading && user) loadData();
+  }, [user, loading, router]);
 
   if (loading || dataLoading) {
     return (
@@ -107,11 +134,12 @@ export default function SkinProfilePage() {
           alert(`Yeay! Anda mendapatkan ${data.awardedPoints} Poin Khaf karena telah mengisi Skin Profile!`);
         }
         setIsFilling(false);
-        loadData(); // reload
+        // reload will be triggered manually or by page refresh since we moved loadData
+        window.location.reload();
       } else {
         alert(data.error || 'Gagal menyimpan');
       }
-    } catch (e) {
+    } catch {
       alert('Terjadi kesalahan jaringan');
     } finally {
       setIsSubmitting(false);
@@ -135,58 +163,15 @@ export default function SkinProfilePage() {
       </div>
 
       <div className="px-6 py-6 space-y-6 z-10 relative">
-        {/* Skin Profile Card */}
-        {skinProfile ? (
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold text-[#2C5C59] text-lg">Profil Kulit Saya</h2>
-              <span className="text-xs text-gray-400">Diperbarui oleh BA</span>
-            </div>
-
-            {/* Skin Type */}
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#E2F0EF] flex items-center justify-center text-2xl">
-                🧴
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Jenis Kulit</p>
-                <p className="text-lg font-bold text-[#2C5C59]">{SKIN_TYPE_LABELS[skinProfile.skinType] ?? skinProfile.skinType}</p>
-              </div>
-            </div>
-
-            {/* Concerns */}
-            <div>
-              <p className="text-sm text-gray-500 mb-3">Concern</p>
-              <div className="flex flex-wrap gap-2">
-                {skinProfile.concerns.map((concern, i) => (
-                  <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm bg-[#FAEBEC] text-[#D88C95] font-medium border border-[#D88C95]/20">
-                    {CONCERN_ICONS[concern.toLowerCase()] ?? '💡'} {concern}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Preferences */}
-            {skinProfile.preferences?.length > 0 && (
-              <div>
-                <p className="text-sm text-gray-500 mb-3">Preferensi</p>
-                <div className="flex flex-wrap gap-2">
-                  {skinProfile.preferences.map((pref, i) => (
-                    <span key={i} className="inline-flex items-center px-3 py-1.5 rounded-full text-sm bg-[#E2F0EF] text-[#6DB9B2] font-medium border border-[#6DB9B2]/20">
-                      {pref}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : isFilling ? (
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-6 animate-in">
+        {/* Skin Profile Card or Edit Form */}
+        {/* Show edit form when filling */}
+        {isFilling && (
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-6">
             <div className="text-center mb-2">
-              <h2 className="font-bold text-[#2C5C59] text-xl mb-1">Kenali Kulit Anda</h2>
-              <p className="text-sm text-gray-500">Dapatkan +50 Poin dengan melengkapi profil!</p>
+              <h2 className="font-bold text-[#2C5C59] text-xl mb-1">{skinProfile ? 'Perbarui Skin Profile' : 'Kenali Kulit Anda'}</h2>
+              {!skinProfile && <p className="text-sm text-gray-500">Dapatkan +50 Poin dengan melengkapi profil!</p>}
             </div>
-            
+
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-3">Apa jenis kulit Anda?</label>
               <div className="grid grid-cols-2 gap-2">
@@ -207,21 +192,30 @@ export default function SkinProfilePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-3">Apa masalah kulit yang Anda hadapi? (Bisa &gt;1)</label>
+              <label className="block text-sm font-bold text-gray-700 mb-3">Apa masalah kulit yang Anda hadapi? (Bisa lebih dari 1)</label>
               <div className="flex flex-wrap gap-2">
-                {Object.keys(CONCERN_ICONS).map((concern) => {
-                  const isSelected = qConcerns.includes(concern);
+                {[
+                  { val: 'Jerawat', icon: '🔴' },
+                  { val: 'Kulit Kusam', icon: '🌑' },
+                  { val: 'Flek Hitam', icon: '⬛' },
+                  { val: 'Kulit Kering', icon: '🏜️' },
+                  { val: 'Berminyak', icon: '💧' },
+                  { val: 'Pori Besar', icon: '⭕' },
+                  { val: 'Kerutan', icon: '〰️' },
+                  { val: 'Sensitif', icon: '🌸' },
+                ].map(({ val, icon }) => {
+                  const isSelected = qConcerns.includes(val);
                   return (
                     <button
-                      key={concern}
-                      onClick={() => toggleConcern(concern)}
+                      key={val}
+                      onClick={() => toggleConcern(val)}
                       className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all flex items-center gap-2 ${
                         isSelected
                           ? 'border-[#D88C95] bg-[#FAEBEC] text-[#D88C95]'
                           : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
                       }`}
                     >
-                      <span>{CONCERN_ICONS[concern]}</span> <span className="capitalize">{concern}</span>
+                      <span>{icon}</span> <span>{val}</span>
                     </button>
                   );
                 })}
@@ -229,27 +223,83 @@ export default function SkinProfilePage() {
             </div>
 
             <div className="pt-4 flex gap-3">
-              <button 
+              <button
                 onClick={() => setIsFilling(false)}
                 className="flex-1 py-4 rounded-2xl font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all"
               >
                 Batal
               </button>
-              <button 
+              <button
                 onClick={handleSaveProfile}
                 disabled={isSubmitting}
                 className="flex-[2] py-4 rounded-2xl font-semibold text-white bg-[#6DB9B2] hover:opacity-90 disabled:opacity-50 active:scale-95 transition-all shadow-lg shadow-[#6DB9B2]/20"
               >
-                {isSubmitting ? 'Menyimpan...' : 'Simpan & Ambil Poin'}
+                {isSubmitting ? 'Menyimpan...' : skinProfile ? '💾 Perbarui Profil' : 'Simpan & Ambil Poin'}
               </button>
             </div>
           </div>
-        ) : (
+        )}
+
+        {/* Show profile card when not editing */}
+        {!isFilling && skinProfile && (
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-[#2C5C59] text-lg">Profil Kulit Saya</h2>
+              <div className="flex items-center gap-2">
+                {!skinProfile.updatedByBaId
+                  ? <span className="text-xs text-gray-400">Diisi sendiri</span>
+                  : <span className="text-xs text-gray-400">Diperbarui BA{lastBaName ? `: ${lastBaName}` : ''}</span>
+                }
+                <button
+                  onClick={() => setIsFilling(true)}
+                  className="text-xs px-3 py-1 rounded-full border border-[#6DB9B2] text-[#6DB9B2] hover:bg-[#E2F0EF] transition-colors font-medium"
+                >
+                  Edit
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-[#E2F0EF] flex items-center justify-center text-2xl">🧴</div>
+              <div>
+                <p className="text-sm text-gray-500">Jenis Kulit</p>
+                <p className="text-lg font-bold text-[#2C5C59]">{SKIN_TYPE_LABELS[skinProfile.skinType] ?? skinProfile.skinType}</p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500 mb-3">Concern</p>
+              <div className="flex flex-wrap gap-2">
+                {skinProfile.concerns.map((concern, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm bg-[#FAEBEC] text-[#D88C95] font-medium border border-[#D88C95]/20">
+                    {getConcernIcon(concern)} {concern}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {skinProfile.preferences?.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-500 mb-3">Preferensi</p>
+                <div className="flex flex-wrap gap-2">
+                  {skinProfile.preferences.map((pref, i) => (
+                    <span key={i} className="inline-flex items-center px-3 py-1.5 rounded-full text-sm bg-[#E2F0EF] text-[#6DB9B2] font-medium border border-[#6DB9B2]/20">
+                      {pref}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Empty state when no profile and not editing */}
+        {!isFilling && !skinProfile && (
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 text-center">
             <div className="text-5xl mb-4">🧴</div>
             <h2 className="font-bold text-[#2C5C59] mb-2">Belum Ada Skin Profile</h2>
             <p className="text-sm text-gray-500 mb-6">Lengkapi profil kulit Anda sekarang untuk mendapatkan rekomendasi produk yang tepat.</p>
-            <button 
+            <button
               onClick={() => setIsFilling(true)}
               className="w-full py-4 rounded-2xl font-semibold text-white gradient-hero shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all"
             >

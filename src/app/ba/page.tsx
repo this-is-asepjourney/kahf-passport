@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, getAggregateFromServer, count } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { formatCompact, formatIDR, formatDate } from '@/lib/utils';
+import { formatCompact, formatDate } from '@/lib/utils';
 import Link from 'next/link';
 
 interface BaStats {
@@ -31,6 +31,12 @@ interface FollowUpItem {
   daysSincePurchase: number;
 }
 
+interface FeaturedProduct {
+  id: string;
+  name?: string;
+  description?: string;
+}
+
 export default function BaDashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -47,7 +53,7 @@ export default function BaDashboardPage() {
   const [storeName, setStoreName] = useState('');
   const [recentCustomers, setRecentCustomers] = useState<RecentCustomer[]>([]);
   const [followUps, setFollowUps] = useState<FollowUpItem[]>([]);
-  const [featuredProduct, setFeaturedProduct] = useState<any>(null);
+  const [featuredProduct, setFeaturedProduct] = useState<FeaturedProduct | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -56,11 +62,9 @@ export default function BaDashboardPage() {
       router.replace('/');
       return;
     }
-    if (!loading && user) loadData();
-  }, [user, loading]);
 
-  const loadData = async () => {
-    if (!user?.storeId) return setDataLoading(false);
+    const loadData = async () => {
+      if (!user?.storeId) return setDataLoading(false);
     try {
       // 1. Get Store Name
       const storeDoc = await getDoc(doc(db, 'stores', user.storeId));
@@ -79,37 +83,34 @@ export default function BaDashboardPage() {
         totalSales = data.totalSales ?? 0;
       }
 
-      // 3. Get BA's Customers count
-      const customerQuery = query(collection(db, 'customers'), where('registeredByBaId', '==', user.uid));
-      const countSnap = await getAggregateFromServer(customerQuery, { count: count() });
-      const totalCustomers = countSnap.data().count;
+      // 3. Get Customers count (Globally, so BA can see self-registered customers)
+      const customerDocsSnap = await getDocs(query(collection(db, 'customers')));
+      const customerDocs = customerDocsSnap;
+      const totalCustomers = customerDocs.docs.length;
 
-      // Repeat Purchase (purchaseCount > 1)
-      const repeatQuery = query(collection(db, 'customers'), where('registeredByBaId', '==', user.uid), where('purchaseCount', '>', 1));
-      const repeatSnap = await getAggregateFromServer(repeatQuery, { count: count() });
-      const repeatCount = repeatSnap.data().count;
+      // Repeat Purchase (purchaseCount > 1) calculated locally
+      let repeatCount = 0;
+      customerDocs.docs.forEach(doc => {
+        if ((doc.data().purchaseCount || 0) > 1) {
+          repeatCount++;
+        }
+      });
       const repeatPurchaseRate = totalCustomers > 0 ? Math.round((repeatCount / totalCustomers) * 100) : 0;
 
-      // 4. Get Recent Customers & all customers for follow up
-      const customerDocsSnap = await getDocs(query(collection(db, 'customers'), where('registeredByBaId', '==', user.uid)));
-      const customerDocs = customerDocsSnap;
+      // 4. Get Recent Customers
+      const allCustomers = customerDocs.docs.map(d => ({
+        id: d.id,
+        data: d.data(),
+        createdAt: d.data().createdAt ? d.data().createdAt.toDate() : new Date(0)
+      }));
       
-      const recentQuery = query(
-        collection(db, 'customers'),
-        where('registeredByBaId', '==', user.uid),
-        orderBy('createdAt', 'desc'),
-        limit(5)
-      );
-      const recentDocs = await getDocs(recentQuery);
-      const recentList = recentDocs.docs.map(d => {
-        const data = d.data();
-        return {
-          id: d.id,
-          fullName: data.fullName || 'Tanpa Nama',
-          lastPurchaseAt: data.lastPurchaseAt ? data.lastPurchaseAt.toDate().toISOString() : null,
-          status: data.status
-        };
-      });
+      allCustomers.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      const recentList = allCustomers.slice(0, 5).map(d => ({
+        id: d.id,
+        fullName: d.data.fullName || 'Tanpa Nama',
+        lastPurchaseAt: d.data.lastPurchaseAt ? d.data.lastPurchaseAt.toDate().toISOString() : null,
+        status: d.data.status
+      }));
 
       // 5. Get Follow Ups
       const followUpList: FollowUpItem[] = [];
@@ -152,6 +153,9 @@ export default function BaDashboardPage() {
       setDataLoading(false);
     }
   };
+
+  if (!loading && user) loadData();
+  }, [user, loading, router]);
 
   if (loading || dataLoading) {
     return (

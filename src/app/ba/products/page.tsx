@@ -42,7 +42,7 @@ export default function BaProductsPage() {
 
   const filtered = products.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 
-    p.category.toLowerCase().includes(search.toLowerCase())
+    (p.categoryId && p.categoryId.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -72,7 +72,7 @@ export default function BaProductsPage() {
               <span className="text-6xl drop-shadow-sm">🧴</span>
             </div>
             <div className="p-5 flex flex-col flex-1">
-              <span className="text-xs font-bold text-[#6DB9B2] uppercase tracking-wider mb-1">{p.category}</span>
+              <span className="text-xs font-bold text-[#6DB9B2] uppercase tracking-wider mb-1">{p.categoryId}</span>
               <h3 className="font-bold text-gray-900 text-lg leading-tight mb-2">{p.name}</h3>
               <p className="text-sm text-gray-500 line-clamp-2 mb-4 flex-1">{p.description}</p>
               

@@ -27,13 +27,14 @@ function CustomerSearchContent() {
   const [searched, setSearched] = useState(false);
 
   useEffect(() => {
-    if (initialQuery && initialQuery.length >= 3) {
-      handleSearch(initialQuery);
-    }
+    if (initialQuery && initialQuery.length > 0 && initialQuery.length < 3) return;
+    handleSearch(initialQuery);
   }, [initialQuery]);
 
   const handleSearch = async (searchStr: string = query) => {
-    if (searchStr.trim().length < 3) return;
+    // If length is > 0 but < 3, we wait. If 0, we fetch the default list.
+    if (searchStr.trim().length > 0 && searchStr.trim().length < 3) return;
+    
     setLoading(true);
     setSearched(true);
     try {
