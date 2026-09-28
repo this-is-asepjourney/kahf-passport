@@ -48,6 +48,11 @@ export async function POST(request: NextRequest) {
     const isFirstTime = !profileDoc.exists;
 
     await db.runTransaction(async (tx) => {
+      // --- READS ---
+      const accRef = db.collection('loyaltyAccounts').doc(customerId);
+      const accDoc = isFirstTime ? await tx.get(accRef) : null;
+
+      // --- WRITES ---
       // 1. Save Skin Profile
       tx.set(profileRef, {
         customerId,
@@ -61,6 +66,19 @@ export async function POST(request: NextRequest) {
       // 2. Award Points if First Time
       if (isFirstTime) {
         const bonusPoints = 50;
+        let currentPoints = 0;
+        
+        if (accDoc && accDoc.exists) {
+          currentPoints = accDoc.data()?.points || 0;
+        }
+        
+        const newTotal = currentPoints + bonusPoints;
+        
+        // Update Tier based on new total
+        let tier = 'bronze';
+        if (newTotal >= 5000) tier = 'platinum';
+        else if (newTotal >= 1500) tier = 'gold';
+        else if (newTotal >= 500) tier = 'silver';
 
         // Add Ledger
         const ledgerRef = db.collection('loyaltyLedgers').doc();
@@ -73,15 +91,10 @@ export async function POST(request: NextRequest) {
           createdAt: FieldValue.serverTimestamp(),
         });
 
-        // Update Loyalty Account
-        const accRef = db.collection('loyaltyAccounts').doc(customerId);
-        const accDoc = await tx.get(accRef);
-        
-        let newTotal = bonusPoints;
-        if (accDoc.exists) {
-          newTotal = (accDoc.data()?.points || 0) + bonusPoints;
+        if (accDoc && accDoc.exists) {
           tx.update(accRef, {
             points: FieldValue.increment(bonusPoints),
+            tier: tier,
             updatedAt: FieldValue.serverTimestamp(),
           });
         } else {
@@ -89,22 +102,10 @@ export async function POST(request: NextRequest) {
             customerId,
             customerNameSnapshot: customerName,
             points: bonusPoints,
-            tier: 'Bronze',
+            tier: tier,
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
           });
-        }
-
-        // Update Tier based on new total
-        let tier = 'Bronze';
-        if (newTotal >= 5000) tier = 'Platinum';
-        else if (newTotal >= 1500) tier = 'Gold';
-        else if (newTotal >= 500) tier = 'Silver';
-
-        if (accDoc.exists && accDoc.data()?.tier !== tier) {
-          tx.update(accRef, { tier });
-        } else if (!accDoc.exists) {
-          tx.set(accRef, { tier }, { merge: true });
         }
       }
     });

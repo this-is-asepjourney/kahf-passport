@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { formatIDR, formatDate, formatCompact } from '@/lib/utils';
+import { formatIDR, formatDate } from '@/lib/utils';
 import type { Customer, Purchase } from '@/types';
 import Link from 'next/link';
 
@@ -25,42 +25,43 @@ export default function PassportPage() {
       router.replace('/');
       return;
     }
-    if (user) loadData();
-  }, [user, loading]);
 
-  const loadData = async () => {
-    if (!user) return;
-    try {
-      const customersQ = query(
-        collection(db, 'customers'),
-        where('uid', '==', user.uid)
-      );
-      const snap = await getDocs(customersQ);
-      if (!snap.empty) {
-        const customerData = { id: snap.docs[0].id, ...snap.docs[0].data() } as Customer;
-        setCustomer(customerData);
-
-        const purchasesQ = query(
-          collection(db, 'purchases'),
-          where('customerId', '==', customerData.id),
-          where('status', '==', 'valid'),
-          orderBy('purchasedAt', 'desc'),
-          limit(3)
+    const loadData = async () => {
+      if (!user) return;
+      try {
+        const customersQ = query(
+          collection(db, 'customers'),
+          where('uid', '==', user.uid)
         );
-        const purchasesSnap = await getDocs(purchasesQ);
-        const purchases = purchasesSnap.docs.map(d => ({
-          id: d.id,
-          ...d.data(),
-          purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
-        })) as Purchase[];
-        setRecentPurchases(purchases);
+        const snap = await getDocs(customersQ);
+        if (!snap.empty) {
+          const customerData = { id: snap.docs[0].id, ...snap.docs[0].data() } as Customer;
+          setCustomer(customerData);
+
+          const purchasesQ = query(
+            collection(db, 'purchases'),
+            where('customerId', '==', customerData.id),
+            where('status', '==', 'valid'),
+            orderBy('purchasedAt', 'desc'),
+            limit(3)
+          );
+          const purchasesSnap = await getDocs(purchasesQ);
+          const purchases = purchasesSnap.docs.map(d => ({
+            id: d.id,
+            ...d.data(),
+            purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
+          })) as Purchase[];
+          setRecentPurchases(purchases);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setDataLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setDataLoading(false);
-    }
-  };
+    };
+
+    if (user) loadData();
+  }, [user, loading, router]);
 
   if (loading || dataLoading) {
     return (
@@ -179,6 +180,44 @@ export default function PassportPage() {
           </div>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="relative z-10"><path d="m9 18 6-6-6-6"/></svg>
         </div>
+      </div>
+
+      {/* Riwayat Pembelian (Recent Purchases) */}
+      <div className="px-6 relative z-10 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-[#2C5C59] font-bold">Riwayat Belanja</h2>
+          <Link href="/passport/purchases" className="text-xs font-semibold text-[#6DB9B2] hover:text-[#5CA39D]">
+            Lihat Semua
+          </Link>
+        </div>
+        
+        {recentPurchases.length === 0 ? (
+          <div className="bg-white rounded-3xl p-6 text-center shadow-sm border border-gray-100">
+            <div className="text-3xl mb-2">🛍️</div>
+            <p className="text-sm font-medium text-gray-500">Belum ada riwayat belanja.</p>
+            <p className="text-xs text-gray-400 mt-1">Kunjungi store Kahf terdekat untuk mulai berbelanja.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 space-y-3">
+            {recentPurchases.map((purchase, idx) => (
+              <div key={purchase.id} className={`flex justify-between items-center ${idx !== recentPurchases.length - 1 ? 'border-b border-gray-50 pb-3' : ''}`}>
+                <div className="flex gap-3 items-center">
+                  <div className="w-10 h-10 rounded-xl bg-[#F8F9FA] flex items-center justify-center text-[#2C5C59]">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{formatIDR(purchase.totalAmount)}</p>
+                    <p className="text-xs text-gray-500">{formatDate(purchase.purchasedAt)}</p>
+                  </div>
+                </div>
+                <div className="text-right flex flex-col justify-end items-end gap-1">
+                  <span className="text-[10px] font-bold px-2 py-1 bg-[#E2F0EF] text-[#2C5C59] rounded-md">Berhasil</span>
+                  <span className="text-[10px] text-gray-400 font-medium">#{purchase.invoiceNo || purchase.id.slice(0,6)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="px-6 pb-8 text-center text-[#6DB9B2]/60 text-xs font-medium italic relative z-10">
