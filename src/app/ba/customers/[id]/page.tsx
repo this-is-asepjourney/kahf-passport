@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { useAuth } from '@/lib/auth/AuthContext';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { recordPurchaseSchema, type RecordPurchaseFormValues } from '@/lib/validators/schemas';
@@ -14,8 +13,6 @@ import Link from 'next/link';
 
 export default function BaCustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
-  const router = useRouter();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -39,59 +36,70 @@ export default function BaCustomerDetailPage() {
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
 
   useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load customer
+        const customerDoc = await getDoc(doc(db, 'customers', id));
+        if (customerDoc.exists()) {
+          setCustomer({ id: customerDoc.id, ...customerDoc.data() } as Customer);
+        }
+
+        // Load purchases
+        const purchasesQ = query(
+          collection(db, 'purchases'),
+          where('customerId', '==', id),
+          orderBy('purchasedAt', 'desc')
+        );
+        const purchasesSnap = await getDocs(purchasesQ);
+        const allPurchases = purchasesSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
+        })) as Purchase[];
+        setPurchases(allPurchases);
+
+        // Load Skin Profile
+        const skinProfileDoc = await getDoc(doc(db, 'skinProfiles', id));
+        if (skinProfileDoc.exists()) {
+          setSkinProfile({ id: skinProfileDoc.id, ...skinProfileDoc.data() } as SkinProfile);
+        }
+
+        // Load Consultations
+        const consultationsQ = query(
+          collection(db, 'consultations'),
+          where('customerId', '==', id),
+          orderBy('createdAt', 'desc')
+        );
+        const consultationsSnap = await getDocs(consultationsQ);
+        const allConsultations = consultationsSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? d.data().createdAt,
+        })) as Consultation[];
+        setConsultations(allConsultations);
+
+        // Load active products
+        const productsQ = query(collection(db, 'products'), where('isActive', '==', true));
+        const productsSnap = await getDocs(productsQ);
+        const allProducts = productsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Product[];
+        setProducts(allProducts);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadData();
   }, [id]);
 
-  const loadData = async () => {
+  // We define a separate reloadData to be called from handlers
+  const reloadData = async () => {
     try {
-      // Load customer
-      const customerDoc = await getDoc(doc(db, 'customers', id));
-      if (customerDoc.exists()) {
-        setCustomer({ id: customerDoc.id, ...customerDoc.data() } as Customer);
-      }
-
-      // Load purchases
-      const purchasesQ = query(
-        collection(db, 'purchases'),
-        where('customerId', '==', id),
-        orderBy('purchasedAt', 'desc')
-      );
+      const purchasesQ = query(collection(db, 'purchases'), where('customerId', '==', id), orderBy('purchasedAt', 'desc'));
       const purchasesSnap = await getDocs(purchasesQ);
-      const allPurchases = purchasesSnap.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-        purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
-      })) as Purchase[];
-      setPurchases(allPurchases);
-
-      // Load Skin Profile
-      const skinProfileDoc = await getDoc(doc(db, 'skinProfiles', id));
-      if (skinProfileDoc.exists()) {
-        setSkinProfile({ id: skinProfileDoc.id, ...skinProfileDoc.data() } as SkinProfile);
-      }
-
-      // Load Consultations
-      const consultationsQ = query(
-        collection(db, 'consultations'),
-        where('customerId', '==', id),
-        orderBy('createdAt', 'desc')
-      );
-      const consultationsSnap = await getDocs(consultationsQ);
-      const allConsultations = consultationsSnap.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-        createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? d.data().createdAt,
-      })) as Consultation[];
-      setConsultations(allConsultations);
-
-      // Load active products
-      const productsQ = query(collection(db, 'products'), where('isActive', '==', true));
-      const productsSnap = await getDocs(productsQ);
-      const allProducts = productsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Product[];
-      setProducts(allProducts);
-    } finally {
-      setLoading(false);
-    }
+      setPurchases(purchasesSnap.docs.map(d => ({
+        id: d.id, ...d.data(), purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
+      })) as Purchase[]);
+    } catch {}
   };
 
   const handleSubmit = async (data: RecordPurchaseFormValues) => {
@@ -121,7 +129,7 @@ export default function BaCustomerDetailPage() {
       setSuccess('Pembelian berhasil dicatat!');
       setShowForm(false);
       form.reset();
-      loadData(); // Refresh
+      reloadData(); // Refresh purchases
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Terjadi kesalahan');
     } finally {
@@ -148,9 +156,9 @@ export default function BaCustomerDetailPage() {
 
       if (res.ok) {
         setSuccess('Pembelian berhasil divoid');
-        loadData();
+        reloadData();
       }
-    } catch (err) {
+    } catch {
       setError('Gagal void pembelian');
     }
   };
@@ -281,7 +289,7 @@ export default function BaCustomerDetailPage() {
                     </div>
                     <span className="text-xs font-semibold px-2 py-1 bg-white border rounded-full capitalize">{consult.skinType}</span>
                   </div>
-                  {consult.notes && <p className="text-sm text-gray-600 mt-2 mb-2 line-clamp-2">"{consult.notes}"</p>}
+                  {consult.notes && <p className="text-sm text-gray-600 mt-2 mb-2 line-clamp-2">&quot;{consult.notes}&quot;</p>}
                   {consult.recommendedProducts && consult.recommendedProducts.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       <p className="text-xs font-bold text-gray-400 uppercase mb-2">Rekomendasi Produk:</p>
@@ -353,7 +361,6 @@ export default function BaCustomerDetailPage() {
                     
                     <div className="space-y-3">
                       {fields.map((field, index) => {
-                        const selectedProduct = products.find(p => p.id === form.watch(`items.${index}.productId`));
                         return (
                           <div key={field.id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 space-y-3 relative group">
                             {fields.length > 1 && (

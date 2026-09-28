@@ -1,13 +1,15 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { formatIDR, formatDate } from '@/lib/utils';
 import type { Customer, Purchase } from '@/types';
 import Link from 'next/link';
+import { ImageUpload } from '@/components/ImageUpload';
 
 export default function PassportPage() {
   const { user, loading, signOutUser } = useAuth();
@@ -63,6 +65,16 @@ export default function PassportPage() {
     if (user) loadData();
   }, [user, loading, router]);
 
+  const handlePhotoUpload = async (url: string) => {
+    if (!customer) return;
+    try {
+      await updateDoc(doc(db, 'customers', customer.id), { photoUrl: url });
+      setCustomer({ ...customer, photoUrl: url });
+    } catch (error) {
+      console.error('Failed to update photo URL in Firestore', error);
+    }
+  };
+
   if (loading || dataLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -94,9 +106,25 @@ export default function PassportPage() {
       {/* Header */}
       <div className="px-6 pt-12 pb-6 relative z-10 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          {/* Avatar Placeholder */}
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#6DB9B2] to-[#E8C5C8] flex items-center justify-center text-white text-2xl font-bold shadow-md">
-            {customer.fullName.charAt(0).toUpperCase()}
+          {/* Avatar Area */}
+          <div className="relative group w-16 h-16 shrink-0">
+            {customer.photoUrl ? (
+              <img src={customer.photoUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover shadow-md" />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#6DB9B2] to-[#E8C5C8] flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                {customer.fullName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            {/* Overlay for ImageUpload */}
+            <div className="absolute inset-0 rounded-full overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-black/40">
+              <ImageUpload
+                onUploadSuccess={handlePhotoUpload}
+                folder="profiles"
+                className="w-full h-full opacity-0 absolute inset-0 cursor-pointer"
+                label=""
+              />
+              <span className="text-white text-xs pointer-events-none">Ubah</span>
+            </div>
           </div>
           <div>
             <h1 className="text-xl font-bold text-[#2C5C59]">Halo, {customer.fullName.split(' ')[0]}! ✨</h1>

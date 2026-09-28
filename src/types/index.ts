@@ -23,6 +23,7 @@ export interface Customer {
   uid: string | null;
   fullName: string;
   phone: string;
+  photoUrl?: string;
   birthDate?: string;
   gender?: 'male' | 'female';
   city?: string;
@@ -85,6 +86,7 @@ export interface Product {
   sku: string;
   name: string;
   description?: string;
+  imageUrl?: string;
   defaultPrice: number;
   isActive: boolean;
   createdAt: string;

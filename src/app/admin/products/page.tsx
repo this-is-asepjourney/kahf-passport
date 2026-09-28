@@ -1,15 +1,17 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
 import { collection, query, orderBy, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import type { Product, ProductCategory } from '@/types';
 import { formatIDR } from '@/lib/utils';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { productSchema, type ProductFormValues } from '@/lib/validators/schemas';
+import { ImageUpload } from '@/components/ImageUpload';
 
 export default function AdminProductsPage() {
   const { user, loading } = useAuth();
@@ -23,24 +25,15 @@ export default function AdminProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema) as any,
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ProductFormValues>({
+    resolver: zodResolver(productSchema),
     defaultValues: {
       isActive: true,
       sku: `PRD-${Math.random().toString(36).substring(2, 8).toUpperCase()}` // simple random SKU
     }
   });
 
-  useEffect(() => {
-    if (!loading && !user) { router.replace('/login'); return; }
-    if (!loading && user && !['admin_region', 'super_admin'].includes(user.role ?? '')) {
-      router.replace('/');
-      return;
-    }
-    if (!loading && user) loadData();
-  }, [user, loading]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [productsSnap, categoriesSnap] = await Promise.all([
         getDocs(query(collection(db, 'products'), orderBy('createdAt', 'desc'))),
@@ -51,7 +44,16 @@ export default function AdminProductsPage() {
     } finally {
       setDataLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!loading && !user) { router.replace('/login'); return; }
+    if (!loading && user && !['admin_region', 'super_admin'].includes(user.role ?? '')) {
+      router.replace('/');
+      return;
+    }
+    if (!loading && user) loadData();
+  }, [user, loading, router, loadData]);
 
   const toggleActive = async (product: Product) => {
     if (user?.role !== 'super_admin') return;
@@ -139,9 +141,13 @@ export default function AdminProductsPage() {
                   <tr key={product.id} className={`hover:bg-gray-50/50 transition-colors ${!product.isActive ? 'opacity-50' : ''}`}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#E2F0EF] text-[#2C5C59] flex items-center justify-center text-lg">
-                          🧴
-                        </div>
+                        {product.imageUrl ? (
+                          <img src={product.imageUrl} alt={product.name} className="w-10 h-10 rounded-xl object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-[#E2F0EF] text-[#2C5C59] flex items-center justify-center text-lg">
+                            🧴
+                          </div>
+                        )}
                         <div>
                           <p className="font-semibold text-gray-900">{product.name}</p>
                           <p className="text-xs text-gray-500 max-w-xs truncate">{product.description || 'Tidak ada deskripsi'}</p>
@@ -189,6 +195,24 @@ export default function AdminProductsPage() {
             </div>
             
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Foto Produk</label>
+                <Controller
+                  name="imageUrl"
+                  control={control}
+                  render={({ field }) => (
+                    <ImageUpload
+                      onUploadSuccess={(url) => field.onChange(url)}
+                      folder="products"
+                      currentImage={field.value}
+                      className="w-full max-w-[160px] mx-auto aspect-square rounded-2xl overflow-hidden shadow-sm border border-gray-200"
+                      label="Unggah Foto"
+                    />
+                  )}
+                />
+                {errors.imageUrl && <p className="text-xs text-red-500 mt-1 text-center">{errors.imageUrl.message}</p>}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nama Produk</label>
                 <input
