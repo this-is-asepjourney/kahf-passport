@@ -11,7 +11,7 @@ export default function BaScanPage() {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
-  const scannerRef = useRef<{ clear: () => void } | null>(null);
+  const scannerRef = useRef<{ stop: () => Promise<void>, clear: () => void } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -19,72 +19,97 @@ export default function BaScanPage() {
     if (!loading && user && !['ba', 'admin_region', 'super_admin'].includes(user.role ?? '')) {
       router.replace('/');
     }
-  }, [user, loading]);
+    
+    // Cleanup scanner on unmount
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().then(() => {
+          scannerRef.current?.clear();
+        }).catch(console.error);
+      }
+    };
+  }, [user, loading, router]);
 
   const startScanner = async () => {
     setError('');
     setScanning(true);
 
-    try {
-      const { Html5QrcodeScanner } = await import('html5-qrcode');
-      const scanner = new Html5QrcodeScanner(
-        'qr-reader',
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        false
-      );
+    // Beri waktu bagi React untuk me-render div #qr-reader
+    setTimeout(async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode');
+        const html5QrCode = new Html5Qrcode('qr-reader');
+        scannerRef.current = html5QrCode;
 
-      scanner.render(
-        async (decodedText: string) => {
-          if (processing) return;
-          setProcessing(true);
-          scanner.clear();
-          scannerRef.current = null;
-          setScanning(false);
-
-          // Extract token from URL
-          const match = decodedText.match(/\/p\/([^/?]+)/);
-          if (!match) {
-            setError('QR tidak dikenali. Pastikan ini adalah QR Passport Khaf.');
-            setProcessing(false);
-            return;
-          }
-
-          const token = match[1];
-          try {
-            // Import doc & getDoc dynamically or statically (we already import from 'firebase/firestore' in the file or we can just import them)
-            const { doc, getDoc } = await import('firebase/firestore');
-            const { db } = await import('@/lib/firebase/client');
+        await html5QrCode.start(
+          { facingMode: 'environment' }, // Gunakan kamera belakang
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          async (decodedText: string) => {
+            if (processing) return;
+            setProcessing(true);
             
-            const tokenDoc = await getDoc(doc(db, 'qrTokens', token));
-            if (!tokenDoc.exists() || !tokenDoc.data()?.isActive) {
-              setError('QR Code tidak valid atau sudah kadaluarsa.');
+            // Hentikan scanner segera setelah QR terbaca
+            if (scannerRef.current) {
+              await scannerRef.current.stop().catch(console.error);
+              scannerRef.current.clear();
+              scannerRef.current = null;
+            }
+            setScanning(false);
+
+            // Extract token from URL
+            const match = decodedText.match(/\/p\/([^/?]+)/);
+            if (!match) {
+              setError('QR tidak dikenali. Pastikan ini adalah QR Passport Khaf.');
               setProcessing(false);
               return;
             }
-            const customerId = tokenDoc.data()?.customerId;
-            router.push(`/ba/customers/${customerId}`);
-          } catch (e) {
-            setError('Gagal memproses QR Code.');
-            setProcessing(false);
+
+            const token = match[1];
+            try {
+              const { doc, getDoc } = await import('firebase/firestore');
+              const { db } = await import('@/lib/firebase/client');
+              
+              const tokenDoc = await getDoc(doc(db, 'qrTokens', token));
+              if (!tokenDoc.exists() || !tokenDoc.data()?.isActive) {
+                setError('QR Code tidak valid atau sudah kadaluarsa.');
+                setProcessing(false);
+                return;
+              }
+              const customerId = tokenDoc.data()?.customerId;
+              router.push(`/ba/customers/${customerId}`);
+            } catch (e) {
+              console.error(e);
+              setError('Gagal memproses QR Code.');
+              setProcessing(false);
+            }
+          },
+          () => {
+            // Ignore scan errors
           }
-        },
-        (err: string) => {
-          // Ignore scan errors (just means QR not found in frame yet)
-        }
-      );
-      scannerRef.current = scanner;
-    } catch {
-      setError('Gagal memulai kamera. Pastikan izin kamera sudah diberikan.');
-      setScanning(false);
-    }
+        );
+      } catch (err) {
+        console.error("Camera error:", err);
+        setError('Gagal memulai kamera. Pastikan izin kamera sudah diberikan dan tidak digunakan oleh aplikasi lain.');
+        setScanning(false);
+      }
+    }, 100);
   };
 
   const stopScanner = () => {
     if (scannerRef.current) {
-      scannerRef.current.clear();
-      scannerRef.current = null;
+      scannerRef.current.stop().then(() => {
+        if (scannerRef.current) {
+          scannerRef.current.clear();
+          scannerRef.current = null;
+        }
+        setScanning(false);
+      }).catch((err: unknown) => {
+        console.error("Failed to stop scanner", err);
+        setScanning(false);
+      });
+    } else {
+      setScanning(false);
     }
-    setScanning(false);
   };
 
   if (loading) {
