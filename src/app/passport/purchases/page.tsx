@@ -67,7 +67,7 @@ export default function PurchasesPage() {
       <div className="px-6 pt-12 pb-6 z-10 relative bg-white/50 backdrop-blur-sm border-b border-gray-100">
         <div className="flex items-center gap-3">
           <Link href="/passport" className="text-[#2C5C59] p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
           </Link>
           <h1 className="text-xl font-bold text-[#2C5C59]">Riwayat Pembelian</h1>
         </div>
@@ -82,7 +82,7 @@ export default function PurchasesPage() {
             <p className="text-5xl mb-3">🛒</p>
             <h2 className="font-bold text-[#2C5C59] mb-2">Belum Ada Riwayat</h2>
             <p className="text-sm text-gray-500">
-              Pembelian Anda di counter Khaf akan muncul di sini
+              Pembelian Anda di counter Kahf akan muncul di sini
             </p>
           </div>
         ) : (
@@ -100,9 +100,8 @@ function PurchaseCard({ purchase }: { purchase: Purchase }) {
 
   return (
     <div
-      className={`bg-white rounded-3xl shadow-sm overflow-hidden animate-in transition-all border border-gray-100 ${
-        purchase.status === 'void' ? 'opacity-60' : ''
-      }`}
+      className={`bg-white rounded-3xl shadow-sm overflow-hidden animate-in transition-all border border-gray-100 ${purchase.status === 'void' ? 'opacity-60' : ''
+        }`}
     >
       <button
         onClick={() => setExpanded(!expanded)}
@@ -111,7 +110,7 @@ function PurchaseCard({ purchase }: { purchase: Purchase }) {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="w-12 h-12 rounded-2xl bg-[#E2F0EF] flex items-center justify-center text-[#6DB9B2] flex-shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
             </div>
             <div>
               <p className="font-semibold text-[#2C5C59] text-base">{purchase.storeNameSnapshot}</p>
@@ -138,7 +137,7 @@ function PurchaseCard({ purchase }: { purchase: Purchase }) {
             {purchase.items.length} item · BA: <span className="font-medium">{purchase.baNameSnapshot}</span>
           </p>
           <span className="text-[#6DB9B2] bg-[#E2F0EF] p-1.5 rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${expanded ? 'rotate-180' : ''}`}><path d="m6 9 6 6 6-6"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${expanded ? 'rotate-180' : ''}`}><path d="m6 9 6 6 6-6" /></svg>
           </span>
         </div>
       </button>

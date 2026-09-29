@@ -39,7 +39,7 @@ export default function SkinProfilePage() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [lastBaName, setLastBaName] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(true);
-  
+
   // Questionnaire state
   const [isFilling, setIsFilling] = useState(false);
   const [qSkinType, setQSkinType] = useState('normal');
@@ -131,7 +131,7 @@ export default function SkinProfilePage() {
       const data = await res.json();
       if (res.ok) {
         if (data.awardedPoints > 0) {
-          alert(`Yeay! Anda mendapatkan ${data.awardedPoints} Poin Khaf karena telah mengisi Skin Profile!`);
+          alert(`Yeay! Anda mendapatkan ${data.awardedPoints} Poin Kahf karena telah mengisi Skin Profile!`);
         }
         setIsFilling(false);
         // reload will be triggered manually or by page refresh since we moved loadData
@@ -156,7 +156,7 @@ export default function SkinProfilePage() {
       <div className="px-6 pt-12 pb-6 z-10 relative bg-white/50 backdrop-blur-sm border-b border-gray-100">
         <div className="flex items-center gap-3">
           <Link href="/passport" className="text-[#2C5C59] p-2 -ml-2 rounded-full hover:bg-gray-100">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
           </Link>
           <h1 className="text-xl font-bold text-[#2C5C59]">Skin Profile</h1>
         </div>
@@ -179,11 +179,10 @@ export default function SkinProfilePage() {
                   <button
                     key={val}
                     onClick={() => setQSkinType(val)}
-                    className={`py-3 px-4 rounded-xl text-sm font-medium border-2 transition-all ${
-                      qSkinType === val
+                    className={`py-3 px-4 rounded-xl text-sm font-medium border-2 transition-all ${qSkinType === val
                         ? 'border-[#6DB9B2] bg-[#E2F0EF] text-[#2C5C59]'
                         : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
-                    }`}
+                      }`}
                   >
                     {label}
                   </button>
@@ -209,11 +208,10 @@ export default function SkinProfilePage() {
                     <button
                       key={val}
                       onClick={() => toggleConcern(val)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all flex items-center gap-2 ${
-                        isSelected
+                      className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all flex items-center gap-2 ${isSelected
                           ? 'border-[#D88C95] bg-[#FAEBEC] text-[#D88C95]'
                           : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
-                      }`}
+                        }`}
                     >
                       <span>{icon}</span> <span>{val}</span>
                     </button>
@@ -365,19 +363,19 @@ export default function SkinProfilePage() {
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-50 safe-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
         <Link href="/passport" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#6DB9B2]">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
           <span className="text-[10px] font-medium">Home</span>
         </Link>
         <Link href="/passport/qr" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#6DB9B2]">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><rect width="8" height="8" x="3" y="3"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><rect width="8" height="8" x="3" y="3" /></svg>
           <span className="text-[10px] font-medium">Passport</span>
         </Link>
         <div className="flex flex-col items-center gap-1 text-gray-400">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
           <span className="text-[10px] font-medium">Notifikasi</span>
         </div>
         <Link href="/passport/profile" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#6DB9B2]">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
           <span className="text-[10px] font-medium">Akun</span>
         </Link>
       </div>

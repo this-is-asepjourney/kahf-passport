@@ -44,7 +44,7 @@ export default async function QrGatewayPage({ params }: Props) {
         <div className="text-center max-w-sm">
           <div className="text-5xl mb-4">🔍</div>
           <h1 className="text-xl font-bold text-gray-900 mb-2">Customer Tidak Ditemukan</h1>
-          <p className="text-gray-500 text-sm">Terjadi kesalahan. Hubungi counter Khaf terdekat.</p>
+          <p className="text-gray-500 text-sm">Terjadi kesalahan. Hubungi counter Kahf terdekat.</p>
         </div>
       </div>
     );

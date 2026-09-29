@@ -23,12 +23,15 @@
     --ring: 262 80% 55%;
     --radius: 0.75rem;
 
-    /* Khaf brand palette (Mint Green & Soft Peach) */
-    --khaf-primary: 174 34% 58%;      /* Mint Green #6DB9B2 */
-    --khaf-primary-dark: 176 35% 27%; /* Dark Teal #2C5C59 */
-    --khaf-peach: 352 34% 82%;        /* Soft Peach #E2C2C6 */
-    --khaf-gold: 38 95% 55%;
-    
+    /* Kahf brand palette (Mint Green & Soft Peach) */
+    --Kahf-primary: 174 34% 58%;
+    /* Mint Green #6DB9B2 */
+    --Kahf-primary-dark: 176 35% 27%;
+    /* Dark Teal #2C5C59 */
+    --Kahf-peach: 352 34% 82%;
+    /* Soft Peach #E2C2C6 */
+    --Kahf-gold: 38 95% 55%;
+
     --gradient-hero: linear-gradient(135deg, hsl(174 34% 58%) 0%, hsl(352 34% 82%) 100%);
     --gradient-card: linear-gradient(135deg, hsl(174 34% 58% / 0.1) 0%, hsl(352 34% 82% / 0.1) 100%);
   }
@@ -60,6 +63,7 @@
   * {
     border-color: hsl(var(--border));
   }
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
@@ -67,61 +71,84 @@
   }
 }
 
-/* ---- Khaf Custom Utilities ---- */
+/* ---- Kahf Custom Utilities ---- */
 @layer utilities {
   .gradient-hero {
     background: var(--gradient-hero);
   }
+
   .gradient-card {
     background: var(--gradient-card);
   }
+
   .text-gradient {
     background: var(--gradient-hero);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
   .glass {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
+
   .glass-dark {
     background: rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
+
   .animate-in {
     animation: fadeIn 0.3s ease-out;
   }
+
   .slide-up {
     animation: slideUp 0.4s ease-out;
   }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ---- Scrollbar Styling ---- */
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--muted-foreground) / 0.3);
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
 }
@@ -130,6 +157,7 @@
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
 .safe-top {
   padding-top: env(safe-area-inset-top, 0px);
 }

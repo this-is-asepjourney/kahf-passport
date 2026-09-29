@@ -197,9 +197,13 @@ export default function BaCustomerDetailPage() {
             <h1 className="text-xl font-bold text-white">Profil Customer</h1>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-white/20 glass flex items-center justify-center text-2xl font-bold text-white">
-              {customer.fullName.charAt(0)}
-            </div>
+            {customer.photoUrl ? (
+              <img src={customer.photoUrl} alt="Profile" className="w-16 h-16 rounded-2xl object-cover shadow-md" />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-white/20 glass flex items-center justify-center text-2xl font-bold text-white shadow-md">
+                {customer.fullName.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <h2 className="text-xl font-bold text-white">{customer.fullName}</h2>
               <p className="text-white/70 text-sm">{maskPhone(customer.phone)}</p>

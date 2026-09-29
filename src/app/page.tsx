@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Khaf Passport — Your Beauty Journey Starts Here',
+  title: 'Kahf Passport — Your Beauty Journey Starts Here',
   description: 'Satu platform terintegrasi untuk mendukung layanan personal dan berkelanjutan.',
 };
 
@@ -20,7 +20,7 @@ export default function HomePage() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
         {/* Brand Text */}
         <div className="text-center mb-12">
-          <h2 className="text-xl text-[#2C5C59] font-medium tracking-wide mb-1">Khaf</h2>
+          <h2 className="text-xl text-[#2C5C59] font-medium tracking-wide mb-1">Kahf</h2>
           <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#6DB9B2] to-[#E8C5C8] tracking-tight">
             FIND ME<span className="text-[#E8C5C8]">✨</span>
           </h1>
@@ -29,10 +29,10 @@ export default function HomePage() {
         {/* Tagline */}
         <div className="text-center max-w-sm mb-16 space-y-4">
           <p className="text-lg font-medium text-[#2C5C59]">
-            From Beauty Consultation<br/>to Personalized Beauty Experience
+            From Beauty Consultation<br />to Personalized Beauty Experience
           </p>
           <p className="text-sm text-gray-500 leading-relaxed">
-            Satu platform terintegrasi untuk mendukung Beauty Advisor memberikan pelayanan yang lebih cepat, personal, dan berkelanjutan kepada setiap pelanggan Khaf di seluruh Indonesia.
+            Satu platform terintegrasi untuk mendukung Beauty Advisor memberikan pelayanan yang lebih cepat, personal, dan berkelanjutan kepada setiap pelanggan Kahf di seluruh Indonesia.
           </p>
         </div>
 
@@ -51,7 +51,7 @@ export default function HomePage() {
             Daftar
           </Link>
         </div>
-        
+
         {/* Guest Link */}
         <div className="mt-6">
           <Link href="/login" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">

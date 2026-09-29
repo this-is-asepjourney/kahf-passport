@@ -1,7 +1,7 @@
 {
-  "name": "Khaf Passport",
-  "short_name": "Khaf",
-  "description": "Riwayat pembelian digital produk Khaf",
+  "name": "Kahf Passport",
+  "short_name": "Kahf",
+  "description": "Riwayat pembelian digital produk Kahf",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -22,6 +22,9 @@
       "purpose": "maskable any"
     }
   ],
-  "categories": ["shopping", "lifestyle"],
+  "categories": [
+    "shopping",
+    "lifestyle"
+  ],
   "lang": "id"
 }

@@ -39,7 +39,7 @@ export default function LoginPage() {
       const normalizedPhone = normalizePhone(data.phone);
       const email = `${normalizedPhone.replace('+', '')}@kahf.id`;
       const credential = await signInWithEmailAndPassword(auth, email, data.password);
-      
+
       const tokenResult = await credential.user.getIdTokenResult();
       const role = tokenResult.claims.role as string;
 
@@ -84,7 +84,7 @@ export default function LoginPage() {
               <span className="text-3xl">✨</span>
             </div>
             <h1 className="text-2xl font-bold text-gray-900">Selamat Datang</h1>
-            <p className="text-sm text-gray-500 mt-1">Masuk ke Khaf Passport</p>
+            <p className="text-sm text-gray-500 mt-1">Masuk ke Kahf Passport</p>
           </div>
 
           {/* Error */}
@@ -175,7 +175,7 @@ export default function LoginPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <input
                   type="email"
-                  placeholder="email@khaf.com"
+                  placeholder="email@Kahf.com"
                   {...emailForm.register('email')}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
                 />

@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
         reminderDate: reminderDateStr,
         status: 'pending',
         purchaseId,
-        message: `Hai ${customer.fullName}! Sudah 30 hari sejak pembelian ${product.productName}. Yuk repurchase di counter Khaf terdekat! 🛍️`,
+        message: `Hai ${customer.fullName}! Sudah 30 hari sejak pembelian ${product.productName}. Yuk repurchase di counter Kahf terdekat! 🛍️`,
         createdAt: FieldValue.serverTimestamp(),
       });
     }

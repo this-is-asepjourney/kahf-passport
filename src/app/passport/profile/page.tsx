@@ -99,9 +99,13 @@ export default function PassportProfilePage() {
       <div className="px-6 py-6 space-y-6 z-10 relative">
         <div className="bg-white rounded-3xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-full bg-[#E2F0EF] text-[#6DB9B2] flex items-center justify-center text-2xl font-bold">
-              {customer?.fullName.charAt(0).toUpperCase()}
-            </div>
+            {customer?.photoUrl ? (
+              <img src={customer.photoUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover shadow-md" />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-[#E2F0EF] text-[#6DB9B2] flex items-center justify-center text-2xl font-bold shadow-sm">
+                {customer?.fullName.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <p className="font-bold text-[#2C5C59] text-lg">{customer?.fullName}</p>
               <p className="text-sm text-gray-500">{customer?.phone}</p>

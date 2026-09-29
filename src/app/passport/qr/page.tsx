@@ -10,7 +10,7 @@ import type { Customer } from '@/types';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react'; // Wait, let's just use standard text if lucide-react isn't installed. I will use standard SVG.
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://khaf.app';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://Kahf.app';
 
 export default function QrPage() {
   const { user, loading } = useAuth();
@@ -80,13 +80,13 @@ export default function QrPage() {
       {/* Header */}
       <div className="flex items-center px-6 pt-12 pb-4 z-10 relative">
         <Link href="/passport" className="text-[#2C5C59] p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </Link>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12 z-10 relative -mt-10">
         <div className="text-center mb-8">
-          <h2 className="text-sm text-[#2C5C59] font-medium tracking-widest mb-1 uppercase">Khaf</h2>
+          <h2 className="text-sm text-[#2C5C59] font-medium tracking-widest mb-1 uppercase">Kahf</h2>
           <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#6DB9B2] to-[#E8C5C8] tracking-tight">
             FIND ME<span className="text-[#E8C5C8]">✨</span>
           </h1>
@@ -107,7 +107,7 @@ export default function QrPage() {
                 className="block"
                 fgColor="#2C5C59"
               />
-              
+
               {/* Corner markers */}
               <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[#6DB9B2] rounded-tl-3xl"></div>
               <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[#6DB9B2] rounded-tr-3xl"></div>

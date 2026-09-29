@@ -19,7 +19,7 @@ export default function BaScanPage() {
     if (!loading && user && !['ba', 'admin_region', 'super_admin'].includes(user.role ?? '')) {
       router.replace('/');
     }
-    
+
     // Cleanup scanner on unmount
     return () => {
       if (scannerRef.current) {
@@ -47,7 +47,7 @@ export default function BaScanPage() {
           async (decodedText: string) => {
             if (processing) return;
             setProcessing(true);
-            
+
             // Hentikan scanner segera setelah QR terbaca
             if (scannerRef.current) {
               await scannerRef.current.stop().catch(console.error);
@@ -59,7 +59,7 @@ export default function BaScanPage() {
             // Extract token from URL
             const match = decodedText.match(/\/p\/([^/?]+)/);
             if (!match) {
-              setError('QR tidak dikenali. Pastikan ini adalah QR Passport Khaf.');
+              setError('QR tidak dikenali. Pastikan ini adalah QR Passport Kahf.');
               setProcessing(false);
               return;
             }
@@ -68,7 +68,7 @@ export default function BaScanPage() {
             try {
               const { doc, getDoc } = await import('firebase/firestore');
               const { db } = await import('@/lib/firebase/client');
-              
+
               const tokenDoc = await getDoc(doc(db, 'qrTokens', token));
               if (!tokenDoc.exists() || !tokenDoc.data()?.isActive) {
                 setError('QR Code tidak valid atau sudah kadaluarsa.');
