@@ -13,57 +13,57 @@ interface FollowUpItem extends Customer {
 
 export default function BaFollowUpPage() {
   const { user, loading } = useAuth();
-  const [customers, setCustomers] = useState<FollowUpItem[]>([, loadFollowUps]);
+  const [customers, setCustomers] = useState<FollowUpItem[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
+    const loadFollowUps = async () => {
+      if (!user?.uid) return;
+      try {
+        // Find customers registered by this BA or who belong to this BA's store (simplification: registered by BA)
+        const q = query(
+          collection(db, 'customers'),
+          where('registeredByBaId', '==', user.uid)
+        );
+        
+        const snap = await getDocs(q);
+        const now = new Date();
+        
+        const followUpList: FollowUpItem[] = [];
+        
+        snap.docs.forEach(doc => {
+          const data = doc.data();
+          if (data.lastPurchaseAt) {
+            const lastPurchase = data.lastPurchaseAt.toDate();
+            const diffTime = Math.abs(now.getTime() - lastPurchase.getTime());
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            // If they purchased > 25 days ago, they are due for follow up
+            if (diffDays >= 25) {
+              followUpList.push({
+                id: doc.id,
+                ...data,
+                daysSincePurchase: diffDays
+              } as FollowUpItem);
+            }
+          }
+        });
+        
+        // Sort by longest days since purchase
+        followUpList.sort((a, b) => b.daysSincePurchase - a.daysSincePurchase);
+        
+        setCustomers(followUpList);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
     if (!loading && user) {
       loadFollowUps();
     }
-  }, [user, loading, loadFollowUps]);
-
-  const loadFollowUps = async () => {
-    if (!user?.uid) return;
-    try {
-      // Find customers registered by this BA or who belong to this BA's store (simplification: registered by BA)
-      const q = query(
-        collection(db, 'customers'),
-        where('registeredByBaId', '==', user.uid)
-      );
-      
-      const snap = await getDocs(q);
-      const now = new Date();
-      
-      const followUpList: FollowUpItem[] = [];
-      
-      snap.docs.forEach(doc => {
-        const data = doc.data();
-        if (data.lastPurchaseAt) {
-          const lastPurchase = data.lastPurchaseAt.toDate();
-          const diffTime = Math.abs(now.getTime() - lastPurchase.getTime());
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-          
-          // If they purchased > 25 days ago, they are due for follow up
-          if (diffDays >= 25) {
-            followUpList.push({
-              id: doc.id,
-              ...data,
-              daysSincePurchase: diffDays
-            } as FollowUpItem);
-          }
-        }
-      });
-      
-      // Sort by longest days since purchase
-      followUpList.sort((a, b) => b.daysSincePurchase - a.daysSincePurchase);
-      
-      setCustomers(followUpList);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setDataLoading(false);
-    }
-  };
+  }, [user, loading]);
 
   if (loading || dataLoading) {
     return (
