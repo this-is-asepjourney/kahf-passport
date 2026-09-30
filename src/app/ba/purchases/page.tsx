@@ -12,39 +12,39 @@ import Link from 'next/link';
 export default function BaPurchasesPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [purchases, setPurchases] = useState<Purchase[]>([, loadPurchases, router]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
+    const loadPurchases = async () => {
+      if (!user) return;
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const q = query(
+          collection(db, 'purchases'),
+          where('baId', '==', user.uid),
+          where('purchasedAt', '>=', Timestamp.fromDate(today)),
+          orderBy('purchasedAt', 'desc'),
+          limit(50)
+        );
+
+        const snap = await getDocs(q);
+        const allPurchases = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
+        })) as Purchase[];
+        setPurchases(allPurchases);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
     if (!loading && !user) { router.replace('/login'); return; }
     if (!loading && user) loadPurchases();
-  }, [user, loading, loadPurchases, router]);
-
-  const loadPurchases = async () => {
-    if (!user) return;
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const q = query(
-        collection(db, 'purchases'),
-        where('baId', '==', user.uid),
-        where('purchasedAt', '>=', Timestamp.fromDate(today)),
-        orderBy('purchasedAt', 'desc'),
-        limit(50)
-      );
-
-      const snap = await getDocs(q);
-      const allPurchases = snap.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-        purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
-      })) as Purchase[];
-      setPurchases(allPurchases);
-    } finally {
-      setDataLoading(false);
-    }
-  };
+  }, [user, loading, router]);
 
   const totalSales = purchases.filter(p => p.status === 'valid').reduce((s, p) => s + p.totalAmount, 0);
 
