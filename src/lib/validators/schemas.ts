@@ -69,9 +69,12 @@ export const productSchema = z.object({
   sku: z.string().min(1, 'SKU wajib diisi').max(50),
   name: z.string().min(1, 'Nama wajib diisi').max(200),
   description: z.string().max(500).optional(),
-  imageUrl: z.string().url('URL gambar tidak valid').optional(),
+  imageUrl: z.string().optional(),
   defaultPrice: z.number().positive('Harga harus > 0'),
   isActive: z.boolean(),
+  suitableSkinTypes: z.array(z.string()).optional(),
+  suitableConcerns: z.array(z.string()).optional(),
+  routineStep: z.string().optional(),
 });
 
 export const storeSchema = z.object({

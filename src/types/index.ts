@@ -93,6 +93,9 @@ export interface Product {
   defaultPrice: number;
   isActive: boolean;
   createdAt: string;
+  suitableSkinTypes?: string[];
+  suitableConcerns?: string[];
+  routineStep?: string;
 }
 
 export type PurchaseStatus = 'valid' | 'void';

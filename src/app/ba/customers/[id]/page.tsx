@@ -162,6 +162,28 @@ export default function BaCustomerDetailPage() {
     return (watchedItems || []).reduce((sum, item) => sum + (item.qty || 0) * (item.unitPrice || 0), 0);
   }, [watchedItems]);
 
+  // Fast Checkout from Recommendations
+  const handleCheckoutRecommendation = (recommendedItems: Array<{ productId: string; productName?: string }>) => {
+    const formItems = recommendedItems.map((item) => {
+      const prod = products.find(
+        (p) => p.id === item.productId || (item.productName && p.name.toLowerCase() === item.productName.toLowerCase())
+      );
+      return {
+        productId: prod?.id || item.productId,
+        qty: 1,
+        unitPrice: prod?.defaultPrice || 45000,
+      };
+    });
+
+    form.reset({
+      invoiceNo: `INV-${Date.now().toString().slice(-6)}`,
+      purchasedAt: new Date().toISOString().slice(0, 16),
+      items: formItems.length > 0 ? formItems : [{ productId: '', qty: 1, unitPrice: 0 }],
+    });
+
+    setShowForm(true);
+  };
+
   // Submit Purchase Transaction
   const handleSubmit = async (values: RecordPurchaseFormValues) => {
     if (!customer) return;
@@ -409,6 +431,26 @@ export default function BaCustomerDetailPage() {
 
         {/* Primary Action Buttons */}
         <div className="space-y-2.5">
+          {/* Quick Checkout Recommendations (If Customer has recommendations) */}
+          {consultations[0]?.recommendedProducts && consultations[0].recommendedProducts.length > 0 && (
+            <button
+              type="button"
+              onClick={() => handleCheckoutRecommendation(consultations[0].recommendedProducts!)}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-[#2C5C59] text-white hover:opacity-95 font-bold text-xs transition-all duration-200 flex items-center justify-between shadow-md shadow-amber-500/20"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg">🛒</span>
+                <div className="text-left">
+                  <p className="font-bold text-white">Checkout {consultations[0].recommendedProducts.length} Produk Rekomendasi</p>
+                  <p className="text-[10px] text-white/80 font-normal">Muat otomatis produk hasil konsultasi terakhir</p>
+                </div>
+              </div>
+              <span className="text-[11px] bg-white/20 text-white px-2.5 py-1 rounded-xl font-bold whitespace-nowrap">
+                Muat Item →
+              </span>
+            </button>
+          )}
+
           {/* Record Purchase Button */}
           <button
             type="button"
@@ -543,9 +585,9 @@ export default function BaCustomerDetailPage() {
                   )}
 
                   {consult.recommendedProducts && consult.recommendedProducts.length > 0 && (
-                    <div className="pt-2 border-t border-gray-200/60">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                        Produk Rekomendasi:
+                    <div className="pt-2 border-t border-gray-200/60 space-y-2">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Produk Rekomendasi ({consult.recommendedProducts.length}):
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {consult.recommendedProducts.map((p) => (
@@ -557,6 +599,14 @@ export default function BaCustomerDetailPage() {
                           </span>
                         ))}
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCheckoutRecommendation(consult.recommendedProducts!)}
+                        className="w-full py-2 px-3 bg-[#2C5C59] hover:bg-[#1f4240] text-white text-[11px] font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                        <span>Checkout Produk Rekomendasi Konsultasi Ini</span>
+                      </button>
                     </div>
                   )}
                 </div>

@@ -55,6 +55,33 @@ const STANDARD_KAHF_CATEGORIES = [
   { name: 'Body Wash', slug: 'body-wash', icon: '🧼', description: 'Sabun pembersih tubuh segar antibakterial' },
 ];
 
+export const TARGET_SKIN_TYPES = [
+  { id: 'normal', label: '🌿 Normal' },
+  { id: 'oily', label: '💧 Berminyak (Oily)' },
+  { id: 'dry', label: '🏜️ Kering (Dry)' },
+  { id: 'combination', label: '☯️ Kombinasi' },
+  { id: 'sensitive', label: '🌸 Sensitif' },
+];
+
+export const TARGET_SKIN_CONCERNS = [
+  { id: 'jerawat', label: '🔴 Jerawat & Acne Care' },
+  { id: 'kusam', label: '🌑 Kulit Kusam / Mencerahkan' },
+  { id: 'komedo_pori', label: '⭕ Komedo & Pori-pori' },
+  { id: 'dehidrasi', label: '🏜️ Kulit Kering & Dehidrasi' },
+  { id: 'minyak', label: '💧 Minyak & Sebum Berlebih' },
+  { id: 'penuaan', label: '〰️ Anti-Aging & Garis Halus' },
+  { id: 'sensitif', label: '🌸 Sensitif & Iritasi' },
+];
+
+export const ROUTINE_STEPS = [
+  { id: 'cleanser', label: '🧴 Step 1: Pembersih Wajah (Face Wash)' },
+  { id: 'treatment', label: '🧪 Step 2: Perawatan Intensif (Serum / Treatment)' },
+  { id: 'moisturizer', label: '💧 Step 3: Pelembap Wajah (Moisturizer)' },
+  { id: 'protection', label: '☀️ Step 4: Proteksi UV (Sunscreen)' },
+  { id: 'fragrance', label: '✨ Grooming: Parfum & Wewangian' },
+  { id: 'body_hair', label: '💈 Personal Care: Tubuh & Rambut' },
+];
+
 export default function AdminProductsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -170,9 +197,29 @@ export default function AdminProductsPage() {
     }
   };
 
+  // Condition States for Product Modal
+  const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([]);
+  const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
+  const [selectedRoutineStep, setSelectedRoutineStep] = useState<string>('cleanser');
+
+  const toggleSkinType = (typeId: string) => {
+    setSelectedSkinTypes((prev) =>
+      prev.includes(typeId) ? prev.filter((t) => t !== typeId) : [...prev, typeId]
+    );
+  };
+
+  const toggleConcern = (concernId: string) => {
+    setSelectedConcerns((prev) =>
+      prev.includes(concernId) ? prev.filter((c) => c !== concernId) : [...prev, concernId]
+    );
+  };
+
   // Product Add / Edit Modal Controls
   const openAddProductModal = () => {
     setEditingProduct(null);
+    setSelectedSkinTypes([]);
+    setSelectedConcerns([]);
+    setSelectedRoutineStep('cleanser');
     resetProductForm({
       name: '',
       description: '',
@@ -187,6 +234,9 @@ export default function AdminProductsPage() {
 
   const openEditProductModal = (product: Product) => {
     setEditingProduct(product);
+    setSelectedSkinTypes(product.suitableSkinTypes || []);
+    setSelectedConcerns(product.suitableConcerns || []);
+    setSelectedRoutineStep(product.routineStep || 'cleanser');
     resetProductForm({
       name: product.name,
       description: product.description || '',
@@ -204,27 +254,34 @@ export default function AdminProductsPage() {
     if (!canManage) return;
     setIsProductSubmitting(true);
     try {
+      const productPayload = {
+        ...data,
+        suitableSkinTypes: selectedSkinTypes,
+        suitableConcerns: selectedConcerns,
+        routineStep: selectedRoutineStep,
+      };
+
       if (editingProduct) {
         // Edit mode
         await updateDoc(doc(db, 'products', editingProduct.id), {
-          ...data,
+          ...productPayload,
           updatedAt: serverTimestamp(),
         });
-        setProducts(prev =>
-          prev.map(p => (p.id === editingProduct.id ? { ...p, ...data } : p))
+        setProducts((prev) =>
+          prev.map((p) => (p.id === editingProduct.id ? { ...p, ...productPayload } : p))
         );
       } else {
         // Add mode
         const newProduct = {
-          ...data,
+          ...productPayload,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
         const docRef = await addDoc(collection(db, 'products'), newProduct);
-        setProducts(prev => [
+        setProducts((prev) => [
           {
             id: docRef.id,
-            ...data,
+            ...productPayload,
             createdAt: new Date().toISOString(),
           } as unknown as Product,
           ...prev,
@@ -652,12 +709,33 @@ export default function AdminProductsPage() {
                                 </div>
                               )}
                               <div>
-                                <p className="font-bold text-gray-900 hover:text-[#2C5C59] transition-colors">
-                                  {product.name}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-bold text-gray-900 hover:text-[#2C5C59] transition-colors">
+                                    {product.name}
+                                  </p>
+                                  {product.routineStep && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#E2F0EF] text-[#2C5C59]">
+                                      {ROUTINE_STEPS.find((s) => s.id === product.routineStep)?.label.split(':')[0] || product.routineStep}
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-xs text-gray-500 max-w-xs truncate">
                                   {product.description || 'Tidak ada deskripsi'}
                                 </p>
+                                {((product.suitableSkinTypes?.length ?? 0) > 0 || (product.suitableConcerns?.length ?? 0) > 0) && (
+                                  <div className="flex items-center gap-1 mt-1 flex-wrap max-w-xs">
+                                    {(product.suitableSkinTypes || []).slice(0, 2).map((t) => (
+                                      <span key={t} className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                                        {TARGET_SKIN_TYPES.find((st) => st.id === t)?.label.split(' ')[0] || t}
+                                      </span>
+                                    ))}
+                                    {(product.suitableConcerns || []).slice(0, 2).map((c) => (
+                                      <span key={c} className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700">
+                                        {TARGET_SKIN_CONCERNS.find((sc) => sc.id === c)?.label.split(' ')[0] || c}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -982,6 +1060,78 @@ export default function AdminProductsPage() {
                   {productErrors.defaultPrice && (
                     <p className="text-xs text-rose-500 mt-1">{productErrors.defaultPrice.message}</p>
                   )}
+                </div>
+
+                {/* Routine Step (Tahapan Rutinitas) */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Tahapan Rutinitas (Routine Step)
+                  </label>
+                  <select
+                    value={selectedRoutineStep}
+                    onChange={(e) => setSelectedRoutineStep(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none bg-white font-medium"
+                  >
+                    {ROUTINE_STEPS.map((step) => (
+                      <option key={step.id} value={step.id}>
+                        {step.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Target Skin Types */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    Target Tipe Kulit (Pilih yang sesuai)
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TARGET_SKIN_TYPES.map((type) => {
+                      const isSelected = selectedSkinTypes.includes(type.id);
+                      return (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() => toggleSkinType(type.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                            isSelected
+                              ? 'bg-[#2C5C59] text-white border-[#2C5C59] shadow-sm'
+                              : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          {isSelected ? '✓ ' : ''}
+                          {type.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Target Skin Concerns */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    Target Fokus Masalah Kulit (Pilih yang sesuai)
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TARGET_SKIN_CONCERNS.map((concern) => {
+                      const isSelected = selectedConcerns.includes(concern.id);
+                      return (
+                        <button
+                          key={concern.id}
+                          type="button"
+                          onClick={() => toggleConcern(concern.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                            isSelected
+                              ? 'bg-[#E2F0EF] text-[#2C5C59] border-[#6DB9B2] shadow-sm font-bold'
+                              : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          {isSelected ? '✓ ' : ''}
+                          {concern.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Active Checkbox */}
