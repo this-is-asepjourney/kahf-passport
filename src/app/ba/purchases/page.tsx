@@ -12,13 +12,13 @@ import Link from 'next/link';
 export default function BaPurchasesPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([, loadPurchases, router]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
     if (!loading && user) loadPurchases();
-  }, [user, loading]);
+  }, [user, loading, loadPurchases, router]);
 
   const loadPurchases = async () => {
     if (!user) return;

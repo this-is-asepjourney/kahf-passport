@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, message: 'Password updated successfully' });
-  } catch (error: any) {
+  } catch (error: any | unknown) {
     console.error('Error resetting password:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }

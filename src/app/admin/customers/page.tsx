@@ -23,7 +23,7 @@ export default function AdminCustomersPage() {
       return;
     }
     if (!loading && user) loadCustomers();
-  }, [user, loading, filter]);
+  }, [user, loading, filter, loadCustomers, router]);
 
   const loadCustomers = async () => {
     setDataLoading(true);

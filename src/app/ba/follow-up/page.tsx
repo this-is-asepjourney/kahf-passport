@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import Link from 'next/link';
-import { formatDate } from '@/lib/utils';
 import type { Customer } from '@/types';
 
 interface FollowUpItem extends Customer {
@@ -14,14 +13,14 @@ interface FollowUpItem extends Customer {
 
 export default function BaFollowUpPage() {
   const { user, loading } = useAuth();
-  const [customers, setCustomers] = useState<FollowUpItem[]>([]);
+  const [customers, setCustomers] = useState<FollowUpItem[]>([, loadFollowUps]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && user) {
       loadFollowUps();
     }
-  }, [user, loading]);
+  }, [user, loading, loadFollowUps]);
 
   const loadFollowUps = async () => {
     if (!user?.uid) return;

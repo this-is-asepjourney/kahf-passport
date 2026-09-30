@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import QRCode from 'react-qr-code';
 import type { Customer } from '@/types';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react'; // Wait, let's just use standard text if lucide-react isn't installed. I will use standard SVG.
+ // Wait, let's just use standard text if lucide-react isn't installed. I will use standard SVG.
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://Kahf.app';
 
@@ -20,22 +20,22 @@ export default function QrPage() {
   const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
+    const loadCustomer = async () => {
+      if (!user) return;
+      try {
+        const q = query(collection(db, 'customers'), where('uid', '==', user.uid));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          setCustomer({ id: snap.docs[0].id, ...snap.docs[0].data() } as Customer);
+        }
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
     if (!loading && !user) { router.replace('/login'); return; }
     if (!loading && user) loadCustomer();
-  }, [user, loading]);
-
-  const loadCustomer = async () => {
-    if (!user) return;
-    try {
-      const q = query(collection(db, 'customers'), where('uid', '==', user.uid));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        setCustomer({ id: snap.docs[0].id, ...snap.docs[0].data() } as Customer);
-      }
-    } finally {
-      setDataLoading(false);
-    }
-  };
+  }, [user, loading, router]);
 
   const handleRegenerate = async () => {
     if (!customer) return;

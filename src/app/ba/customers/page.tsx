@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { formatDate } from '@/lib/utils';
 
 interface CustomerResult {
   id: string;
@@ -22,14 +21,14 @@ function CustomerSearchContent() {
   const initialQuery = searchParams.get('q') || '';
   
   const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState<CustomerResult[]>([]);
+  const [results, setResults] = useState<CustomerResult[]>([, handleSearch]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
   useEffect(() => {
     if (initialQuery && initialQuery.length > 0 && initialQuery.length < 3) return;
     handleSearch(initialQuery);
-  }, [initialQuery]);
+  }, [initialQuery, handleSearch]);
 
   const handleSearch = async (searchStr: string = query) => {
     // If length is > 0 but < 3, we wait. If 0, we fetch the default list.
@@ -43,7 +42,7 @@ function CustomerSearchContent() {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       const data = await res.json();
-      setResults(data.customers ?? []);
+      setResults(data.customers ?? [, handleSearch]);
     } finally {
       setLoading(false);
     }

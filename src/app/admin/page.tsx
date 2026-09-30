@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
-import { formatCompact, formatIDR } from '@/lib/utils';
-import Link from 'next/link';
 
 export default function AdminDashboardPage() {
   const { user, loading } = useAuth();

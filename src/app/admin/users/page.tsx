@@ -6,8 +6,7 @@ import Link from 'next/link';
 
 export default function AdminUsersPage() {
   const { user } = useAuth();
-  const [targetEmail, setTargetEmail] = useState('');
-  const [targetUid, setTargetUid] = useState('');
+    const [targetUid, setTargetUid] = useState('');
   const [role, setRole] = useState<string>('ba');
   const [storeId, setStoreId] = useState('');
   const [regionId, setRegionId] = useState('');

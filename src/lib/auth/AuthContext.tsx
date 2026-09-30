@@ -8,7 +8,6 @@ import {
   ReactNode,
 } from 'react';
 import { User as FirebaseUser, onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/client';
 import type { UserRole, CustomClaims } from '@/types';
 

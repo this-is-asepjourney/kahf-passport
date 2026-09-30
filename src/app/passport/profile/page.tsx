@@ -7,8 +7,6 @@ import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/fire
 import { db } from '@/lib/firebase/client';
 import type { Customer } from '@/types';
 import Link from 'next/link';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase/client';
 
 export default function PassportProfilePage() {
   const { user, loading, signOutUser } = useAuth();
@@ -27,7 +25,7 @@ export default function PassportProfilePage() {
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
     if (!loading && user) loadData();
-  }, [user, loading]);
+  }, [user, loading, loadData, router]);
 
   const loadData = async () => {
     try {
@@ -60,7 +58,7 @@ export default function PassportProfilePage() {
         updatedAt: new Date().toISOString(),
       });
       setMessage('Profil berhasil diperbarui');
-    } catch (err) {
+    } catch {
       setMessage('Gagal menyimpan profil');
     } finally {
       setSaving(false);

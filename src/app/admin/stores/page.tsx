@@ -11,7 +11,7 @@ import Link from 'next/link';
 export default function AdminStoresPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [stores, setStores] = useState<Store[]>([]);
+  const [stores, setStores] = useState<Store[]>([, router]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function AdminStoresPage() {
         .then(snap => setStores(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Store[]))
         .finally(() => setDataLoading(false));
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   return (
     <div className="min-h-screen bg-gray-50">

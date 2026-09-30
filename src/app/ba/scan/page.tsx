@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import Link from 'next/link';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 export default function BaScanPage() {
   const { user, loading } = useAuth();
@@ -37,13 +39,18 @@ export default function BaScanPage() {
     // Beri waktu bagi React untuk me-render div #qr-reader
     setTimeout(async () => {
       try {
-        const { Html5Qrcode } = await import('html5-qrcode');
+        const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
         const html5QrCode = new Html5Qrcode('qr-reader');
         scannerRef.current = html5QrCode;
 
         await html5QrCode.start(
           { facingMode: 'environment' }, // Gunakan kamera belakang
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          { 
+            fps: 30, // Ditingkatkan untuk scanning lebih cepat
+            qrbox: { width: 280, height: 280 }, // Diperbesar sedikit agar mudah memposisikan
+            formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE], // Fokuskan algoritma BANYAK lebih cepat dengan HANYA deteksi QR
+            disableFlip: false // Membantu memproses QR dalam posisi miring/terbalik
+          },
           async (decodedText: string) => {
             if (processing) return;
             setProcessing(true);
@@ -66,9 +73,6 @@ export default function BaScanPage() {
 
             const token = match[1];
             try {
-              const { doc, getDoc } = await import('firebase/firestore');
-              const { db } = await import('@/lib/firebase/client');
-
               const tokenDoc = await getDoc(doc(db, 'qrTokens', token));
               if (!tokenDoc.exists() || !tokenDoc.data()?.isActive) {
                 setError('QR Code tidak valid atau sudah kadaluarsa.');
@@ -76,6 +80,8 @@ export default function BaScanPage() {
                 return;
               }
               const customerId = tokenDoc.data()?.customerId;
+              // Preload halaman customer untuk transisi yang jauh lebih cepat
+              router.prefetch(`/ba/customers/${customerId}`);
               router.push(`/ba/customers/${customerId}`);
             } catch (e) {
               console.error(e);

@@ -11,7 +11,7 @@ import Link from 'next/link';
 export default function AdminRegionsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [regions, setRegions] = useState<Region[]>([]);
+  const [regions, setRegions] = useState<Region[]>([, router]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function AdminRegionsPage() {
         .then(snap => setRegions(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Region[]))
         .finally(() => setDataLoading(false));
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   const levelLabel = (level: number) => {
     const labels = ['Nasional', 'Regional', 'Kota'];

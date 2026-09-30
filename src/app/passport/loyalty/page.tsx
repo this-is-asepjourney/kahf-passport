@@ -7,7 +7,6 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { LoyaltyAccount, LoyaltyLedger, Reward, LoyaltyTier } from '@/types';
-import { formatIDR } from '@/lib/utils';
 
 const TIER_COLORS: Record<LoyaltyTier, { bg: string; text: string; border: string; icon: string }> = {
   bronze: { bg: 'bg-[#F5E6D3]', text: 'text-[#8B6914]', border: 'border-[#D4A574]', icon: '🥉' },
@@ -34,7 +33,7 @@ export default function LoyaltyPage() {
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
     if (!loading && user) loadData();
-  }, [user, loading]);
+  }, [user, loading, loadData, router]);
 
   const loadData = async () => {
     if (!user) return;

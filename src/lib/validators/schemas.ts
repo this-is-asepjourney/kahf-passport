@@ -9,13 +9,13 @@ export const loginSchema = z.object({
 export const phoneSchema = z.object({
   phone: z
     .string()
-    .regex(/^(\+62|62|0)8[1-9][0-9]{6,10}$/, 'Nomor HP tidak valid'),
+    .regex(/^(\+62|62|0)?8[0-9]{6,12}$/, 'Nomor HP tidak valid'),
 });
 
 export const loginPhoneSchema = z.object({
   phone: z
     .string()
-    .regex(/^(\+62|62|0)8[1-9][0-9]{6,10}$/, 'Nomor HP tidak valid'),
+    .regex(/^(\+62|62|0)?8[0-9]{6,12}$/, 'Nomor HP tidak valid'),
   password: z.string().min(6, 'Password minimal 6 karakter'),
 });
 
@@ -27,7 +27,7 @@ export const registerSchema = z.object({
   fullName: z.string().min(2, 'Nama minimal 2 karakter').max(100),
   phone: z
     .string()
-    .regex(/^(\+62|62|0)8[1-9][0-9]{6,10}$/, 'Nomor HP tidak valid'),
+    .regex(/^(\+62|62|0)?8[0-9]{6,12}$/, 'Nomor HP tidak valid'),
   password: z.string().min(6, 'Password minimal 6 karakter'),
   birthDate: z.string().optional(),
   gender: z.enum(['male', 'female']).optional(),

@@ -35,7 +35,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     if (user) {
       loadCustomer();
     }
-  }, [user, loading, id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading, id, router]);
 
   const loadCustomer = async () => {
     try {
@@ -94,8 +95,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
     try {
       // Get the current user's token
-      const token = await user?.claims?.token; 
-      // Wait, we can get token using auth.currentUser.getIdToken()
+            // Wait, we can get token using auth.currentUser.getIdToken()
       const { auth } = await import('@/lib/firebase/client');
       const idToken = await auth.currentUser?.getIdToken();
 
@@ -118,8 +118,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       } else {
         setResetMessage({ type: 'error', text: data.error || 'Gagal mengubah password' });
       }
-    } catch (err: any) {
-      setResetMessage({ type: 'error', text: err.message || 'Terjadi kesalahan' });
+    } catch (err: unknown) {
+      setResetMessage({ type: 'error', text: (err as Error).message || 'Terjadi kesalahan' });
     } finally {
       setIsResetting(false);
     }
@@ -216,7 +216,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 {isEditing ? (
                   <select 
                     value={editForm.status || 'unclaimed'} 
-                    onChange={e => setEditForm({...editForm, status: e.target.value as any})}
+                    onChange={e => setEditForm({...editForm, status: e.target.value as "active" | "unclaimed" | "blocked"})}
                     className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-200 outline-none"
                   >
                     <option value="active">Aktif</option>

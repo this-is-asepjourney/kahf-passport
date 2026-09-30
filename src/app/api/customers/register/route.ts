@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { nanoid } from 'nanoid';
-import { normalizePhone } from '@/lib/utils';
 
 // Generate ULID-like ID
 function generateId() {

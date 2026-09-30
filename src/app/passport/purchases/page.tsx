@@ -13,13 +13,13 @@ export default function PurchasesPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [customerId, setCustomerId] = useState<string | null>(null);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([, loadData, router]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
     if (!loading && user) loadData();
-  }, [user, loading]);
+  }, [user, loading, loadData, router]);
 
   const loadData = async () => {
     if (!user) return;

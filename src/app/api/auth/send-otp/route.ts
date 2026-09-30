@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { nanoid } from 'nanoid';
 import { normalizePhone } from '@/lib/utils';
 
 /**

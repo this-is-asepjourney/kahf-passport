@@ -12,7 +12,7 @@ import Link from 'next/link';
 export default function AdminPurchasesPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([, router]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function AdminPurchasesPage() {
         })) as Purchase[]))
         .finally(() => setDataLoading(false));
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   return (
     <div className="min-h-screen bg-gray-50">
