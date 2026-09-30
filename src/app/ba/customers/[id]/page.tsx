@@ -10,6 +10,7 @@ import { recordPurchaseSchema, type RecordPurchaseFormValues } from '@/lib/valid
 import type { Customer, Purchase, Product, SkinProfile, Consultation } from '@/types';
 import { formatIDR, formatDateTime, formatDate, maskPhone } from '@/lib/utils';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function BaCustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -199,7 +200,7 @@ export default function BaCustomerDetailPage() {
           </div>
           <div className="flex items-center gap-4">
             {customer.photoUrl ? (
-              <img src={customer.photoUrl} alt="Profile" className="w-20 h-20 rounded-2xl object-cover shadow-lg border-2 border-white/50" />
+              <Image src={customer.photoUrl} alt="Profile" width={80} height={80} unoptimized className="w-20 h-20 rounded-2xl object-cover shadow-lg border-2 border-white/50" />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-white/30 backdrop-blur-md flex items-center justify-center text-3xl font-bold text-white shadow-lg border-2 border-white/50">
                 {customer.fullName.charAt(0).toUpperCase()}

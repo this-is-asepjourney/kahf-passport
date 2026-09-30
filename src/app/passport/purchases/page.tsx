@@ -5,49 +5,47 @@ import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
-import type { Customer, Purchase } from '@/types';
+import type { Purchase } from '@/types';
 import Link from 'next/link';
 import { formatIDR, formatDateTime } from '@/lib/utils';
 
 export default function PurchasesPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [customerId, setCustomerId] = useState<string | null>(null);
-  const [purchases, setPurchases] = useState<Purchase[]>([, loadData, router]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
+    const loadData = async () => {
+      if (!user) return;
+      try {
+        const customersQ = query(collection(db, 'customers'), where('uid', '==', user.uid));
+        const custSnap = await getDocs(customersQ);
+        if (custSnap.empty) return;
+        const cId = custSnap.docs[0].id;
+
+        const purchasesQ = query(
+          collection(db, 'purchases'),
+          where('customerId', '==', cId),
+          orderBy('purchasedAt', 'desc')
+        );
+        const purchasesSnap = await getDocs(purchasesQ);
+        const allPurchases = purchasesSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
+        })) as Purchase[];
+        setPurchases(allPurchases);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
     if (!loading && !user) { router.replace('/login'); return; }
     if (!loading && user) loadData();
-  }, [user, loading, loadData, router]);
-
-  const loadData = async () => {
-    if (!user) return;
-    try {
-      const customersQ = query(collection(db, 'customers'), where('uid', '==', user.uid));
-      const custSnap = await getDocs(customersQ);
-      if (custSnap.empty) return;
-      const cId = custSnap.docs[0].id;
-      setCustomerId(cId);
-
-      const purchasesQ = query(
-        collection(db, 'purchases'),
-        where('customerId', '==', cId),
-        orderBy('purchasedAt', 'desc')
-      );
-      const purchasesSnap = await getDocs(purchasesQ);
-      const allPurchases = purchasesSnap.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-        purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
-      })) as Purchase[];
-      setPurchases(allPurchases);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setDataLoading(false);
-    }
-  };
+  }, [user, loading, router]);
 
   if (loading || dataLoading) {
     return (
