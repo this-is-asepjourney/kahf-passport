@@ -1,19 +1,57 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  orderBy,
+  getDocs,
+  addDoc,
+  serverTimestamp,
+  updateDoc,
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { recordPurchaseSchema, type RecordPurchaseFormValues } from '@/lib/validators/schemas';
 import type { Customer, Purchase, Product, SkinProfile, Consultation } from '@/types';
 import { formatIDR, formatDateTime, formatDate, maskPhone } from '@/lib/utils';
 import Link from 'next/link';
-import Image from 'next/image';
+import {
+  ArrowLeft,
+  ShoppingBag,
+  Sparkles,
+  Calendar,
+  FileText,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  Clock,
+  ChevronRight,
+  ShieldCheck,
+  AlertCircle,
+  ExternalLink,
+} from 'lucide-react';
+
+const SKIN_TYPE_DESCRIPTIONS: Record<string, string> = {
+  normal: 'Kondisi kulit seimbang, tidak berminyak atau kering berlebih.',
+  oily: 'Produksi sebum tinggi, rentan kilap dan pori-pori tersumbat.',
+  dry: 'Memerlukan hidrasi ekstra untuk menjaga pelindung skin barrier.',
+  combination: 'Berminyak di area T-zone dan normal/kering di area pipi.',
+  sensitive: 'Mudah reaktif terhadap sinar matahari, cuaca, atau bahan keras.',
+};
 
 export default function BaCustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const router = useRouter();
+
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -24,128 +62,166 @@ export default function BaCustomerDetailPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
+  // Form for recording purchases
   const form = useForm<RecordPurchaseFormValues>({
     resolver: zodResolver(recordPurchaseSchema),
     defaultValues: {
-      invoiceNo: '',
+      invoiceNo: `INV-${Date.now().toString().slice(-6)}`,
       purchasedAt: new Date().toISOString().slice(0, 16),
       items: [{ productId: '', qty: 1, unitPrice: 0 }],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: 'items' });
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'items',
+  });
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Load customer
-        const customerDoc = await getDoc(doc(db, 'customers', id));
-        if (customerDoc.exists()) {
-          setCustomer({ id: customerDoc.id, ...customerDoc.data() } as Customer);
-        }
+  // Fast, Parallel Data Fetching
+  const loadData = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    setError('');
 
-        // Load purchases
-        const purchasesQ = query(
-          collection(db, 'purchases'),
-          where('customerId', '==', id),
-          orderBy('purchasedAt', 'desc')
-        );
-        const purchasesSnap = await getDocs(purchasesQ);
-        const allPurchases = purchasesSnap.docs.map(d => ({
-          id: d.id,
-          ...d.data(),
-          purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
-        })) as Purchase[];
-        setPurchases(allPurchases);
+    try {
+      // Execute all 5 Firestore queries in PARALLEL
+      const [customerDoc, purchasesSnap, skinProfileDoc, consultationsSnap, productsSnap] =
+        await Promise.all([
+          getDoc(doc(db, 'customers', id)),
+          getDocs(
+            query(
+              collection(db, 'purchases'),
+              where('customerId', '==', id),
+              orderBy('purchasedAt', 'desc')
+            )
+          ),
+          getDoc(doc(db, 'skinProfiles', id)),
+          getDocs(
+            query(
+              collection(db, 'consultations'),
+              where('customerId', '==', id),
+              orderBy('createdAt', 'desc')
+            )
+          ),
+          getDocs(query(collection(db, 'products'), where('isActive', '==', true))),
+        ]);
 
-        // Load Skin Profile
-        const skinProfileDoc = await getDoc(doc(db, 'skinProfiles', id));
-        if (skinProfileDoc.exists()) {
-          setSkinProfile({ id: skinProfileDoc.id, ...skinProfileDoc.data() } as SkinProfile);
-        }
-
-        // Load Consultations
-        const consultationsQ = query(
-          collection(db, 'consultations'),
-          where('customerId', '==', id),
-          orderBy('createdAt', 'desc')
-        );
-        const consultationsSnap = await getDocs(consultationsQ);
-        const allConsultations = consultationsSnap.docs.map(d => ({
-          id: d.id,
-          ...d.data(),
-          createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? d.data().createdAt,
-        })) as Consultation[];
-        setConsultations(allConsultations);
-
-        // Load active products
-        const productsQ = query(collection(db, 'products'), where('isActive', '==', true));
-        const productsSnap = await getDocs(productsQ);
-        const allProducts = productsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Product[];
-        setProducts(allProducts);
-      } finally {
-        setLoading(false);
+      // 1. Customer
+      if (customerDoc.exists()) {
+        setCustomer({ id: customerDoc.id, ...customerDoc.data() } as Customer);
+      } else {
+        setCustomer(null);
       }
-    };
 
-    loadData();
+      // 2. Purchases
+      const allPurchases = purchasesSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
+      })) as Purchase[];
+      setPurchases(allPurchases);
+
+      // 3. Skin Profile
+      if (skinProfileDoc.exists()) {
+        setSkinProfile({ id: skinProfileDoc.id, ...skinProfileDoc.data() } as SkinProfile);
+      } else {
+        setSkinProfile(null);
+      }
+
+      // 4. Consultations
+      const allConsultations = consultationsSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? d.data().createdAt,
+      })) as Consultation[];
+      setConsultations(allConsultations);
+
+      // 5. Products
+      const allProducts = productsSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as Product[];
+      setProducts(allProducts);
+    } catch (err: any) {
+      console.error('Error loading customer details in parallel:', err);
+      setError('Gagal memuat beberapa data profil.');
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
-  // We define a separate reloadData to be called from handlers
-  const reloadData = async () => {
-    try {
-      const purchasesQ = query(collection(db, 'purchases'), where('customerId', '==', id), orderBy('purchasedAt', 'desc'));
-      const purchasesSnap = await getDocs(purchasesQ);
-      setPurchases(purchasesSnap.docs.map(d => ({
-        id: d.id, ...d.data(), purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
-      })) as Purchase[]);
-    } catch {}
-  };
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  const handleSubmit = async (data: RecordPurchaseFormValues) => {
+  // Form Item Price Calculation
+  const watchedItems = form.watch('items');
+  const totalAmount = useMemo(() => {
+    return (watchedItems || []).reduce((sum, item) => sum + (item.qty || 0) * (item.unitPrice || 0), 0);
+  }, [watchedItems]);
+
+  // Submit Purchase Transaction
+  const handleSubmit = async (values: RecordPurchaseFormValues) => {
+    if (!customer) return;
     setSubmitting(true);
     setError('');
     setSuccess('');
-    try {
-      const { getAuth } = await import('firebase/auth');
-      const idToken = await getAuth().currentUser?.getIdToken();
 
-      const res = await fetch('/api/purchases/record', {
+    try {
+      const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken();
+      const res = await fetch('/api/purchases', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({
-          customerId: id,
-          ...data,
-          purchasedAt: new Date(data.purchasedAt).toISOString(),
+          customerId: customer.id,
+          invoiceNo: values.invoiceNo,
+          purchasedAt: values.purchasedAt,
+          items: values.items.map((item) => {
+            const product = products.find((p) => p.id === item.productId);
+            return {
+              productId: item.productId,
+              productName: product?.name ?? 'Produk Kahf',
+              sku: product?.sku ?? '',
+              qty: Number(item.qty),
+              unitPrice: Number(item.unitPrice),
+              subtotal: Number(item.qty) * Number(item.unitPrice),
+            };
+          }),
         }),
       });
 
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error ?? 'Gagal mencatat pembelian');
+      if (!res.ok) {
+        throw new Error(result.error || 'Gagal menyimpan pembelian');
+      }
 
-      setSuccess('Pembelian berhasil dicatat!');
+      setSuccess('Transaksi berhasil dicatat dan poin customer telah bertambah!');
       setShowForm(false);
-      form.reset();
-      reloadData(); // Refresh purchases
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Terjadi kesalahan');
+      form.reset({
+        invoiceNo: `INV-${Date.now().toString().slice(-6)}`,
+        purchasedAt: new Date().toISOString().slice(0, 16),
+        items: [{ productId: '', qty: 1, unitPrice: 0 }],
+      });
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || 'Terjadi kesalahan saat menyimpan pembelian.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Void Purchase Handler
   const handleVoid = async (purchaseId: string) => {
-    const reason = prompt('Alasan void:');
-    if (!reason || reason.trim().length < 5) return;
+    const reason = window.prompt('Masukkan alasan pembatalan (void) transaksi:');
+    if (!reason) return;
 
     try {
-      const { getAuth } = await import('firebase/auth');
-      const idToken = await getAuth().currentUser?.getIdToken();
-
+      const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken();
       const res = await fetch('/api/purchases/void', {
         method: 'POST',
         headers: {
@@ -156,154 +232,331 @@ export default function BaCustomerDetailPage() {
       });
 
       if (res.ok) {
-        setSuccess('Pembelian berhasil divoid');
-        reloadData();
+        setSuccess('Pembelian berhasil dibatalkan (void).');
+        await loadData();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Gagal membatalkan transaksi.');
       }
     } catch {
-      setError('Gagal void pembelian');
+      setError('Gagal memproses pembatalan.');
     }
   };
 
-  const watchedItems = form.watch('items');
-  const totalAmount = watchedItems.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
-
+  // Loading Skeleton State
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-4 border-[#E2F0EF] border-t-[#2C5C59] animate-spin" />
+      <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center p-6">
+        <div className="w-12 h-12 rounded-full border-4 border-[#E2F0EF] border-t-[#2C5C59] animate-spin mb-4" />
+        <p className="text-sm font-bold text-gray-800">Menghubungkan ke Beauty Passport...</p>
+        <p className="text-xs text-gray-400 mt-1">Mengambil profil kulit & riwayat pembelian customer</p>
       </div>
     );
   }
 
+  // Customer Not Found State
   if (!customer) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-center">
-        <div>
-          <p className="text-4xl mb-2">🔍</p>
-          <p className="text-gray-600">Customer tidak ditemukan</p>
-          <Link href="/ba/customers" className="mt-4 block text-[#2C5C59] text-sm">← Kembali</Link>
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-6 text-center">
+        <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-sm border border-gray-100">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 text-3xl">
+            🔍
+          </div>
+          <h2 className="text-lg font-bold text-gray-900 mb-1">Customer Tidak Ditemukan</h2>
+          <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+            Data QR Code atau ID Customer tidak terdaftar pada sistem database Kahf Passport.
+          </p>
+          <Link
+            href="/ba/scan"
+            className="w-full py-3 px-4 bg-[#2C5C59] text-white font-bold text-xs rounded-xl hover:bg-[#1f4240] transition-colors block shadow-sm"
+          >
+            ← Kembali ke Scanner
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <div className="bg-gradient-to-br from-[#6DB9B2] to-[#E8C5C8] px-6 pt-6 pb-12 relative overflow-hidden rounded-b-[2rem] shadow-sm">
-        <div className="absolute -bottom-10 -right-10 w-48 h-48 rounded-full bg-white/20 blur-2xl" />
-        <div className="absolute -top-10 -left-10 w-32 h-32 rounded-full bg-white/20 blur-2xl" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-6">
-            <Link href="/ba/customers" className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white backdrop-blur-sm hover:bg-white/30 transition-colors">←</Link>
-            <h1 className="text-xl font-bold text-white">Profil Customer</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            {customer.photoUrl ? (
-              <Image src={customer.photoUrl} alt="Profile" width={80} height={80} unoptimized className="w-20 h-20 rounded-2xl object-cover shadow-lg border-2 border-white/50" />
-            ) : (
-              <div className="w-20 h-20 rounded-2xl bg-white/30 backdrop-blur-md flex items-center justify-center text-3xl font-bold text-white shadow-lg border-2 border-white/50">
-                {customer.fullName.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div>
-              <h2 className="text-xl font-bold text-white leading-tight mb-1">{customer.fullName}</h2>
-              <p className="text-white/90 text-sm">{maskPhone(customer.phone)}</p>
-              <p className="text-white/75 text-xs mt-0.5">ID: {customer.memberNo}</p>
-              <span className={`inline-block mt-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shadow-sm ${
-                customer.status === 'active' ? 'bg-green-400 text-green-950' :
-                'bg-yellow-400 text-yellow-950'
-              }`}>
-                {customer.status === 'active' ? 'Member Aktif' : 'Belum Klaim'}
+    <div className="min-h-screen bg-[#F8F9FA] pb-24">
+      {/* ============================================================== */}
+      {/* EXECUTIVE HERO HEADER (Signature Kahf Deep Pine)               */}
+      {/* ============================================================== */}
+      <div className="bg-gradient-to-br from-[#1A3D3A] via-[#2C5C59] to-[#162A29] px-6 pt-6 pb-12 relative overflow-hidden rounded-b-[2.5rem] shadow-lg text-white">
+        {/* Subtle Ambient Glows */}
+        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-[#6DB9B2]/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-black/30 blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 max-w-xl mx-auto">
+          {/* Top Bar Navigation */}
+          <div className="flex items-center justify-between mb-5">
+            <Link
+              href="/ba/scan"
+              className="w-9 h-9 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white backdrop-blur-md transition-colors border border-white/15"
+              title="Kembali ke Scanner"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#6DB9B2]/30 text-[#A2E0DB] border border-[#6DB9B2]/40 backdrop-blur-md flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-[#A2E0DB]" />
+                <span>Verified Passport</span>
               </span>
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="flex gap-3 mt-6">
-            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 text-center flex-1 border border-white/30 shadow-sm">
-              <p className="text-white font-bold text-2xl leading-none mb-1">{customer.purchaseCount}</p>
-              <p className="text-white/80 text-xs font-medium">Pembelian</p>
+          {/* Customer Avatar & Bio Row */}
+          <div className="flex items-center gap-4">
+            {/* Avatar with Error-Handling & Kahf Monogram Fallback */}
+            <div className="relative w-20 h-20 rounded-2xl overflow-hidden shadow-xl border-2 border-white/30 bg-[#234B48] flex items-center justify-center shrink-0">
+              {customer.photoUrl && !imageError ? (
+                <img
+                  src={customer.photoUrl}
+                  alt=""
+                  onError={() => setImageError(true)}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-[#2C5C59] to-[#438a84] flex items-center justify-center text-white text-3xl font-black">
+                  {customer.fullName?.charAt(0)?.toUpperCase() || 'K'}
+                </div>
+              )}
             </div>
-            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 text-center flex-1 border border-white/30 shadow-sm">
-              <p className="text-white font-bold text-xl leading-none mb-1">{formatIDR(customer.totalSpent)}</p>
-              <p className="text-white/80 text-xs font-medium">Total Belanja</p>
+
+            {/* Customer Details */}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-black text-white leading-tight truncate">
+                {customer.fullName}
+              </h1>
+              <p className="text-white/80 text-xs sm:text-sm font-medium mt-0.5">
+                {maskPhone(customer.phone)}
+              </p>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="font-mono text-[11px] font-semibold text-[#A2E0DB] bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
+                  ID: {customer.memberNo}
+                </span>
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    customer.status === 'active'
+                      ? 'bg-emerald-400 text-emerald-950 shadow-sm'
+                      : 'bg-amber-400 text-amber-950'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      customer.status === 'active' ? 'bg-emerald-800' : 'bg-amber-800'
+                    }`}
+                  />
+                  <span>{customer.status === 'active' ? 'Member Aktif' : 'Belum Klaim'}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Bar */}
+          <div className="grid grid-cols-2 gap-3 mt-6">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3.5 border border-white/15 text-center shadow-sm">
+              <p className="text-white font-black text-2xl leading-none mb-1">
+                {customer.purchaseCount || 0}
+              </p>
+              <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">
+                Pembelian
+              </p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3.5 border border-white/15 text-center shadow-sm">
+              <p className="text-white font-black text-xl leading-none mb-1">
+                {formatIDR(customer.totalSpent || 0)}
+              </p>
+              <p className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">
+                Total Belanja
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="px-6 -mt-6 pb-8 space-y-4 relative z-20">
-        {/* Alerts */}
+      {/* ============================================================== */}
+      {/* MAIN CONTENT CONTAINER                                         */}
+      {/* ============================================================== */}
+      <div className="px-5 -mt-5 space-y-4 max-w-xl mx-auto relative z-20">
+        {/* Error Alert */}
         {error && (
-          <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm animate-in">{error}</div>
-        )}
-        {success && (
-          <div className="p-3 rounded-2xl bg-green-50 border border-green-200 text-green-700 text-sm animate-in">{success}</div>
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5 shadow-sm animate-in">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-bold">Informasi Transaksi</p>
+              <p className="mt-0.5">{error}</p>
+            </div>
+            <button onClick={() => setError('')} className="text-rose-500 font-bold">
+              ✕
+            </button>
+          </div>
         )}
 
-        {/* Input Purchase CTA */}
-        {!showForm && (
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowForm(true)}
-              className="w-full py-4 rounded-3xl gradient-hero text-white font-semibold hover:opacity-90 transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-lg flex items-center justify-center gap-2"
-            >
-              ➕ Input Pembelian Baru
+        {/* Success Alert */}
+        {success && (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5 shadow-sm animate-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-bold">Berhasil</p>
+              <p className="mt-0.5">{success}</p>
+            </div>
+            <button onClick={() => setSuccess('')} className="text-emerald-500 font-bold">
+              ✕
             </button>
+          </div>
+        )}
+
+        {/* Primary Action Buttons */}
+        <div className="space-y-2.5">
+          {/* Record Purchase Button */}
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="w-full py-4 px-6 rounded-2xl bg-[#2C5C59] text-white font-bold text-sm hover:bg-[#1f4240] transition-all duration-200 shadow-md shadow-[#2C5C59]/25 flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Input Pembelian Baru</span>
+          </button>
+
+          {/* Update / Start Consultation Button */}
+          <Link
+            href={`/ba/customers/${customer.id}/consultation`}
+            className="w-full py-3.5 px-6 rounded-2xl bg-[#E2F0EF] text-[#2C5C59] hover:bg-[#d0e6e4] font-bold text-xs transition-all duration-200 flex items-center justify-center gap-2 border border-[#6DB9B2]/30 shadow-sm"
+          >
+            <span>📝</span>
+            <span>{skinProfile ? 'Perbarui Konsultasi Kulit' : 'Mulai Konsultasi Kulit'}</span>
+          </Link>
+
+          {/* Quick Product Recommendation Link for BA */}
+          <Link
+            href="/ba/products"
+            className="w-full py-2.5 px-4 rounded-2xl bg-white text-gray-700 hover:text-[#2C5C59] hover:bg-gray-50 font-bold text-xs transition-colors flex items-center justify-between border border-gray-200 shadow-sm"
+          >
+            <div className="flex items-center gap-2">
+              <span>⭐</span>
+              <span>Katalog & Rekomendasi Produk Sesuai Profil</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+          </Link>
+        </div>
+
+        {/* ============================================================== */}
+        {/* SKIN PROFILE SUMMARY CARD                                      */}
+        {/* ============================================================== */}
+        {skinProfile ? (
+          <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-[#2C5C59] uppercase tracking-wider flex items-center gap-1.5">
+                <span>🧴</span>
+                <span>Profil Kulit Customer</span>
+              </h3>
+              <span className="text-[10px] font-semibold bg-[#E2F0EF] text-[#2C5C59] px-2.5 py-0.5 rounded-full border border-[#6DB9B2]/20">
+                Terverifikasi
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* Skin Type */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#E2F0EF] to-[#edf6f5] border border-[#6DB9B2]/20">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                  Tipe Kulit
+                </span>
+                <span className="text-base font-extrabold text-[#2C5C59] capitalize mt-0.5 block">
+                  {skinProfile.skinType || 'Normal'}
+                </span>
+                <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">
+                  {SKIN_TYPE_DESCRIPTIONS[skinProfile.skinType?.toLowerCase() || 'normal'] ||
+                    'Kondisi kulit memerlukan perawatan teratur.'}
+                </p>
+              </div>
+
+              {/* Skin Concerns */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#FDF2F4] to-[#fbf7f8] border border-[#F4B2BA]/30">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                  Fokus Masalah (Concern)
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                  {skinProfile.concerns && skinProfile.concerns.length > 0 ? (
+                    skinProfile.concerns.map((concern, idx) => (
+                      <span
+                        key={idx}
+                        className="text-xs font-bold text-[#B05B66] bg-white px-2.5 py-1 rounded-xl shadow-2xs border border-[#F4B2BA]/40"
+                      >
+                        {concern}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs font-semibold text-gray-500">Tidak ada masalah khusus</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-gray-900">Belum Ada Profil Kulit</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                Lakukan konsultasi pertama untuk mendapatkan rekomendasi produk presisi.
+              </p>
+            </div>
             <Link
               href={`/ba/customers/${customer.id}/consultation`}
-              className="w-full py-4 rounded-3xl bg-white border-2 border-[#6DB9B2] text-[#6DB9B2] font-semibold hover:bg-[#6DB9B2] hover:text-white transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
+              className="px-3 py-2 bg-[#2C5C59] text-white font-bold text-xs rounded-xl hover:bg-[#1f4240] transition-colors shrink-0 shadow-sm"
             >
-              {skinProfile ? '📝 Perbarui Konsultasi Kulit' : '🧴 Mulai Konsultasi Kulit'}
+              Mulai Konsultasi
             </Link>
           </div>
         )}
 
-        {/* Skin Profile Info */}
-        {!showForm && skinProfile && (
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5">
-            <h3 className="font-bold text-[#2C5C59] mb-3 text-sm uppercase tracking-wider">Profil Kulit</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#E2F0EF] rounded-2xl p-4 text-center">
-                <span className="block text-2xl mb-1">🧴</span>
-                <span className="block text-xs text-gray-500 font-semibold uppercase">Tipe Kulit</span>
-                <span className="block font-bold text-[#2C5C59] capitalize">{skinProfile.skinType}</span>
-              </div>
-              <div className="bg-[#FAEBEC] rounded-2xl p-4 text-center">
-                <span className="block text-2xl mb-1">🎯</span>
-                <span className="block text-xs text-gray-500 font-semibold uppercase">Concern Utama</span>
-                <span className="block font-bold text-[#D88C95] truncate">
-                  {skinProfile.concerns?.length ? skinProfile.concerns[0] : '-'}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ============================================================== */}
+        {/* CONSULTATION HISTORY                                           */}
+        {/* ============================================================== */}
+        {consultations.length > 0 && (
+          <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 space-y-3">
+            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-[#2C5C59]" />
+              <span>Riwayat Konsultasi Kulit ({consultations.length})</span>
+            </h3>
 
-        {/* Consultation History */}
-        {!showForm && consultations.length > 0 && (
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5">
-            <h3 className="font-bold text-gray-900 mb-4">Riwayat Konsultasi Kulit</h3>
-            <div className="space-y-3">
-              {consultations.map(consult => (
-                <div key={consult.id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
-                  <div className="flex justify-between items-start mb-2">
+            <div className="space-y-2.5">
+              {consultations.map((consult) => (
+                <div
+                  key={consult.id}
+                  className="p-3.5 rounded-2xl border border-gray-100 bg-gray-50/70 space-y-2"
+                >
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-sm text-[#2C5C59]">{formatDate(consult.createdAt)}</p>
-                      <p className="text-xs text-gray-500">oleh {consult.baNameSnapshot}</p>
+                      <p className="font-bold text-xs text-[#2C5C59]">{formatDate(consult.createdAt)}</p>
+                      <p className="text-[11px] text-gray-500">Oleh BA: {consult.baNameSnapshot}</p>
                     </div>
-                    <span className="text-xs font-semibold px-2 py-1 bg-white border rounded-full capitalize">{consult.skinType}</span>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 bg-white border border-gray-200 rounded-lg capitalize text-gray-700">
+                      {consult.skinType}
+                    </span>
                   </div>
-                  {consult.notes && <p className="text-sm text-gray-600 mt-2 mb-2 line-clamp-2">&quot;{consult.notes}&quot;</p>}
+
+                  {consult.notes && (
+                    <p className="text-xs text-gray-600 bg-white p-2.5 rounded-xl border border-gray-100 italic">
+                      &ldquo;{consult.notes}&rdquo;
+                    </p>
+                  )}
+
                   {consult.recommendedProducts && consult.recommendedProducts.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <p className="text-xs font-bold text-gray-400 uppercase mb-2">Rekomendasi Produk:</p>
-                      <ul className="text-xs text-gray-600 space-y-1">
-                        {consult.recommendedProducts.map(p => (
-                          <li key={p.productId}>• {p.productName}</li>
+                    <div className="pt-2 border-t border-gray-200/60">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                        Produk Rekomendasi:
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {consult.recommendedProducts.map((p) => (
+                          <span
+                            key={p.productId}
+                            className="text-[11px] font-semibold bg-[#E2F0EF] text-[#2C5C59] px-2 py-0.5 rounded-lg border border-[#6DB9B2]/20"
+                          >
+                            • {p.productName}
+                          </span>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -312,185 +565,71 @@ export default function BaCustomerDetailPage() {
           </div>
         )}
 
-        {/* Purchase Form Modal */}
-        {showForm && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center p-0 sm:p-4 animate-in fade-in">
-            <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95">
-              <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
-                <h3 className="font-bold text-gray-900 text-lg">Catat Pembelian</h3>
-                <button type="button" onClick={() => setShowForm(false)} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center">
-                  ✕
-                </button>
-              </div>
+        {/* ============================================================== */}
+        {/* PURCHASE HISTORY                                               */}
+        {/* ============================================================== */}
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 space-y-3">
+          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+            <ShoppingBag className="w-4 h-4 text-[#2C5C59]" />
+            <span>Riwayat Pembelian ({purchases.length})</span>
+          </h3>
 
-              <div className="p-5 overflow-y-auto flex-1">
-                <form
-                  id="purchase-form"
-                  onSubmit={form.handleSubmit(handleSubmit)}
-                  className="space-y-4"
-                >
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">No. Struk <span className="text-red-500">*</span></label>
-                      <input
-                        type="text"
-                        placeholder="INV-..."
-                        {...form.register('invoiceNo')}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all text-sm"
-                      />
-                      {form.formState.errors.invoiceNo && (
-                        <p className="text-xs text-red-500 mt-1">{form.formState.errors.invoiceNo.message}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-                      <input
-                        type="datetime-local"
-                        {...form.register('purchasedAt')}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none transition-all text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Items */}
-                  <div className="pt-2 border-t border-gray-100">
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-sm font-bold text-gray-900">Keranjang <span className="text-red-500">*</span></label>
-                      <button
-                        type="button"
-                        onClick={() => append({ productId: '', qty: 1, unitPrice: 0 })}
-                        className="text-xs px-3 py-1.5 rounded-full bg-[#E2F0EF] text-[#2C5C59] font-semibold hover:bg-[#cbe6e3] transition-colors"
-                      >
-                        + Tambah Produk
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {fields.map((field, index) => {
-                        return (
-                          <div key={field.id} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 space-y-3 relative group">
-                            {fields.length > 1 && (
-                              <button 
-                                type="button" 
-                                onClick={() => remove(index)} 
-                                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-100 text-red-600 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                ✕
-                              </button>
-                            )}
-                            <select
-                              {...form.register(`items.${index}.productId`)}
-                              onChange={(e) => {
-                                form.setValue(`items.${index}.productId`, e.target.value);
-                                const product = products.find(p => p.id === e.target.value);
-                                if (product) form.setValue(`items.${index}.unitPrice`, product.defaultPrice);
-                              }}
-                              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none bg-white font-medium text-gray-700"
-                            >
-                              <option value="">Pilih Produk...</option>
-                              {products.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                              ))}
-                            </select>
-                            
-                            <div className="flex items-end gap-3">
-                              <div className="flex-1">
-                                <label className="text-[10px] uppercase font-bold text-gray-400 block mb-1">Qty</label>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  {...form.register(`items.${index}.qty`, { valueAsNumber: true })}
-                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none bg-white"
-                                />
-                              </div>
-                              <div className="flex-[2]">
-                                <label className="text-[10px] uppercase font-bold text-gray-400 block mb-1">Harga (IDR)</label>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
-                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none bg-white"
-                                />
-                              </div>
-                              <div className="flex-[2] text-right pb-2">
-                                <p className="text-[10px] uppercase font-bold text-gray-400 mb-0.5">Subtotal</p>
-                                <p className="text-sm font-bold text-gray-900">
-                                  {formatIDR((form.watch(`items.${index}.qty`) || 0) * (form.watch(`items.${index}.unitPrice`) || 0))}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {form.formState.errors.items && (
-                      <p className="text-xs text-red-500 mt-2">{form.formState.errors.items.message}</p>
-                    )}
-                  </div>
-                </form>
-              </div>
-
-              {/* Footer / Total */}
-              <div className="p-5 bg-gray-50 border-t border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="block text-sm font-bold text-gray-900">Total Tagihan</span>
-                    <span className="block text-xs text-[#6DB9B2] font-semibold mt-0.5">
-                      ✨ Customer mendapat +{Math.floor(totalAmount / 10000)} Poin
-                    </span>
-                  </div>
-                  <span className="font-bold text-[#2C5C59] text-2xl">{formatIDR(totalAmount)}</span>
-                </div>
-                
-                <button
-                  type="submit"
-                  form="purchase-form"
-                  disabled={submitting || totalAmount <= 0}
-                  className="w-full py-4 rounded-2xl gradient-hero text-white font-bold text-lg disabled:opacity-50 hover:opacity-90 transition-all duration-200 active:scale-95 shadow-xl shadow-[#6DB9B2]/20"
-                >
-                  {submitting ? 'Menyimpan...' : 'Simpan Transaksi'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Purchase History */}
-        <div className="bg-white rounded-3xl shadow-sm p-5">
-          <h3 className="font-bold text-gray-900 mb-4">Riwayat Pembelian</h3>
           {purchases.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-3xl mb-2">🛒</p>
-              <p className="text-sm text-gray-400">Belum ada riwayat</p>
+            <div className="text-center py-8">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center mx-auto mb-2 text-2xl">
+                🛒
+              </div>
+              <p className="text-xs font-bold text-gray-700">Belum Ada Transaksi Pembelian</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Tekan tombol &ldquo;Input Pembelian Baru&rdquo; di atas untuk mencatat belanja customer.
+              </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {purchases.map((purchase) => (
                 <div
                   key={purchase.id}
-                  className={`p-3 rounded-2xl border ${
-                    purchase.status === 'void' ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-[#E2F0EF] border-[#6DB9B2]/30'
+                  className={`p-3.5 rounded-2xl border transition-colors ${
+                    purchase.status === 'void'
+                      ? 'bg-gray-50 border-gray-200 opacity-60'
+                      : 'bg-white border-gray-100 hover:border-[#6DB9B2]/40 shadow-2xs'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">{formatDateTime(purchase.purchasedAt)}</p>
-                      <p className="text-xs text-gray-500">{purchase.items.length} item · No. {purchase.invoiceNo}</p>
+                      <p className="text-xs font-bold text-gray-900">
+                        {formatDateTime(purchase.purchasedAt)}
+                      </p>
+                      <p className="text-[11px] text-gray-500 font-mono mt-0.5">
+                        {purchase.items.length} item · No. {purchase.invoiceNo}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-sm text-[#2C5C59]">{formatIDR(purchase.totalAmount)}</p>
-                      <span className={`text-xs ${purchase.status === 'void' ? 'text-red-500' : 'text-green-600'}`}>
-                        {purchase.status === 'void' ? 'Void' : 'Valid'}
+                      <p className="font-bold text-sm text-[#2C5C59]">
+                        {formatIDR(purchase.totalAmount)}
+                      </p>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                          purchase.status === 'void'
+                            ? 'bg-rose-100 text-rose-700'
+                            : 'bg-emerald-100 text-emerald-700'
+                        }`}
+                      >
+                        {purchase.status === 'void' ? 'Void (Dibatalkan)' : 'Valid'}
                       </span>
                     </div>
                   </div>
+
                   {purchase.status === 'valid' && (
-                    <button
-                      onClick={() => handleVoid(purchase.id)}
-                      className="mt-2 text-xs text-red-400 hover:text-red-600 transition-colors"
-                    >
-                      Void Pembelian
-                    </button>
+                    <div className="mt-2.5 pt-2 border-t border-gray-100 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleVoid(purchase.id)}
+                        className="text-[11px] font-bold text-rose-500 hover:text-rose-700 transition-colors"
+                      >
+                        Batalkan Transaksi (Void)
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
@@ -498,6 +637,192 @@ export default function BaCustomerDetailPage() {
           )}
         </div>
       </div>
+
+      {/* ============================================================== */}
+      {/* MODAL: INPUT PURCHASE TRANSACTION                              */}
+      {/* ============================================================== */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 sm:zoom-in-95">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10 sm:rounded-t-3xl rounded-t-3xl">
+              <div>
+                <h3 className="font-bold text-gray-900 text-base">Catat Pembelian Baru</h3>
+                <p className="text-xs text-gray-500">
+                  Untuk {customer.fullName} ({customer.memberNo})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1">
+              <form id="purchase-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      No. Struk / Invoice <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="INV-..."
+                      {...form.register('invoiceNo')}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none font-mono"
+                    />
+                    {form.formState.errors.invoiceNo && (
+                      <p className="text-[11px] text-rose-500 mt-1">
+                        {form.formState.errors.invoiceNo.message}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal</label>
+                    <input
+                      type="datetime-local"
+                      {...form.register('purchasedAt')}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Items */}
+                <div className="pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-bold text-gray-900">
+                      Daftar Produk Belanja <span className="text-rose-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => append({ productId: '', qty: 1, unitPrice: 0 })}
+                      className="text-xs px-3 py-1.5 rounded-xl bg-[#E2F0EF] text-[#2C5C59] font-bold hover:bg-[#d0e6e4] transition-colors flex items-center gap-1 border border-[#6DB9B2]/20"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Item</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {fields.map((field, index) => (
+                      <div
+                        key={field.id}
+                        className="p-3.5 rounded-2xl border border-gray-200 bg-gray-50/60 space-y-3 relative group"
+                      >
+                        {fields.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => remove(index)}
+                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-100 text-rose-600 hover:bg-rose-200 text-xs flex items-center justify-center shadow-sm transition-colors"
+                          >
+                            ✕
+                          </button>
+                        )}
+
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                            Pilih Produk Kahf
+                          </label>
+                          <select
+                            {...form.register(`items.${index}.productId`)}
+                            onChange={(e) => {
+                              form.setValue(`items.${index}.productId`, e.target.value);
+                              const product = products.find((p) => p.id === e.target.value);
+                              if (product) form.setValue(`items.${index}.unitPrice`, product.defaultPrice);
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none bg-white font-medium"
+                          >
+                            <option value="">Pilih Produk...</option>
+                            {products.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({formatIDR(p.defaultPrice)})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 items-end">
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                              Qty
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              {...form.register(`items.${index}.qty`, { valueAsNumber: true })}
+                              className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-bold focus:border-[#6DB9B2] outline-none bg-white text-center"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                              Harga Satuan
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })}
+                              className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-bold focus:border-[#6DB9B2] outline-none bg-white text-right"
+                            />
+                          </div>
+                          <div className="text-right">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                              Subtotal
+                            </label>
+                            <p className="text-xs font-black text-[#2C5C59] py-1.5">
+                              {formatIDR(
+                                (form.watch(`items.${index}.qty`) || 0) *
+                                  (form.watch(`items.${index}.unitPrice`) || 0)
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {form.formState.errors.items && (
+                    <p className="text-xs text-rose-500 mt-2">
+                      {form.formState.errors.items.message}
+                    </p>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3 sm:rounded-b-3xl">
+              <div>
+                <p className="text-xs font-bold text-gray-500">Total Transaksi</p>
+                <p className="text-xl font-black text-[#2C5C59] leading-tight">
+                  {formatIDR(totalAmount)}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="py-2.5 px-4 bg-white border border-gray-200 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  form="purchase-form"
+                  disabled={submitting || totalAmount <= 0}
+                  className="py-2.5 px-5 bg-[#2C5C59] text-white font-bold text-xs rounded-xl hover:bg-[#1f4240] disabled:opacity-50 transition-all shadow-md shadow-[#2C5C59]/20"
+                >
+                  {submitting ? 'Menyimpan...' : 'Simpan Transaksi'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -146,74 +146,54 @@ export default function BaScanPage() {
       token = text;
     }
 
-    // Attempt 1: Direct lookup in qrTokens collection
-    try {
-      const tokenDoc = await getDoc(doc(db, 'qrTokens', token));
-      if (tokenDoc.exists()) {
-        const data = tokenDoc.data();
-        if (data?.isActive !== false && data?.customerId) {
-          return data.customerId;
-        }
-      }
-    } catch {
-      // Continue
+    // Parallel Primary Lookup: Direct Customer ID, qrTokenId, qrTokens doc, and memberNo
+    const directCustomerPromise = getDoc(doc(db, 'customers', token))
+      .then((snap) => (snap.exists() ? snap.id : null))
+      .catch(() => null);
+
+    const qrTokenIdPromise = getDocs(query(collection(db, 'customers'), where('qrTokenId', '==', token)))
+      .then((snap) => (!snap.empty ? snap.docs[0].id : null))
+      .catch(() => null);
+
+    const qrTokensPromise = getDoc(doc(db, 'qrTokens', token))
+      .then((snap) => (snap.exists() && snap.data()?.customerId ? snap.data().customerId : null))
+      .catch(() => null);
+
+    const memberNoPromise = getDocs(
+      query(collection(db, 'customers'), where('memberNo', '==', token.toUpperCase()))
+    )
+      .then((snap) => (!snap.empty ? snap.docs[0].id : null))
+      .catch(() => null);
+
+    const primaryResults = await Promise.all([
+      directCustomerPromise,
+      qrTokenIdPromise,
+      qrTokensPromise,
+      memberNoPromise,
+    ]);
+
+    for (const foundId of primaryResults) {
+      if (foundId) return foundId;
     }
 
-    // Attempt 2: Lookup customer by qrTokenId
-    try {
-      const qToken = query(collection(db, 'customers'), where('qrTokenId', '==', token));
-      const snapToken = await getDocs(qToken);
-      if (!snapToken.empty) {
-        return snapToken.docs[0].id;
-      }
-    } catch {
-      // Continue
-    }
-
-    // Attempt 3: Lookup customer by Member Number (e.g., KHF-...)
-    try {
-      const qMember = query(collection(db, 'customers'), where('memberNo', '==', token.toUpperCase()));
-      const snapMember = await getDocs(qMember);
-      if (!snapMember.empty) {
-        return snapMember.docs[0].id;
-      }
-    } catch {
-      // Continue
-    }
-
-    // Attempt 4: Lookup customer by Phone Number
+    // Secondary Lookup (Phone or PublicId if primary did not match)
     const cleanPhone = token.replace(/[^0-9]/g, '');
-    if (cleanPhone.length >= 8) {
-      try {
-        const qPhone = query(collection(db, 'customers'), where('phone', '==', cleanPhone));
-        const snapPhone = await getDocs(qPhone);
-        if (!snapPhone.empty) {
-          return snapPhone.docs[0].id;
-        }
-      } catch {
-        // Continue
-      }
-    }
+    const phonePromise =
+      cleanPhone.length >= 8
+        ? getDocs(query(collection(db, 'customers'), where('phone', '==', cleanPhone)))
+            .then((snap) => (!snap.empty ? snap.docs[0].id : null))
+            .catch(() => null)
+        : Promise.resolve(null);
 
-    // Attempt 5: Lookup customer by Public ID
-    try {
-      const qPub = query(collection(db, 'customers'), where('publicId', '==', token.toLowerCase()));
-      const snapPub = await getDocs(qPub);
-      if (!snapPub.empty) {
-        return snapPub.docs[0].id;
-      }
-    } catch {
-      // Continue
-    }
+    const publicIdPromise = getDocs(
+      query(collection(db, 'customers'), where('publicId', '==', token.toLowerCase()))
+    )
+      .then((snap) => (!snap.empty ? snap.docs[0].id : null))
+      .catch(() => null);
 
-    // Attempt 6: Direct customer document ID check
-    try {
-      const directCust = await getDoc(doc(db, 'customers', token));
-      if (directCust.exists()) {
-        return directCust.id;
-      }
-    } catch {
-      // Continue
+    const secondaryResults = await Promise.all([phonePromise, publicIdPromise]);
+    for (const foundId of secondaryResults) {
+      if (foundId) return foundId;
     }
 
     throw new Error('Data QR atau Customer tidak ditemukan. Pastikan QR valid atau cari secara manual.');
