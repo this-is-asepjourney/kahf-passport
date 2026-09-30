@@ -187,51 +187,52 @@ export default function BaCustomerDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
-      <div className="gradient-hero px-6 pt-12 pb-16 relative overflow-hidden">
-        <div className="absolute -bottom-10 -right-10 w-48 h-48 rounded-full bg-white/10 blur-3xl" />
+      <div className="bg-gradient-to-br from-[#6DB9B2] to-[#E8C5C8] px-6 pt-6 pb-12 relative overflow-hidden rounded-b-[2rem] shadow-sm">
+        <div className="absolute -bottom-10 -right-10 w-48 h-48 rounded-full bg-white/20 blur-2xl" />
+        <div className="absolute -top-10 -left-10 w-32 h-32 rounded-full bg-white/20 blur-2xl" />
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-4">
-            <Link href="/ba/customers" className="text-white/80 hover:text-white">←</Link>
+          <div className="flex items-center gap-3 mb-6">
+            <Link href="/ba/customers" className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white backdrop-blur-sm hover:bg-white/30 transition-colors">←</Link>
             <h1 className="text-xl font-bold text-white">Profil Customer</h1>
           </div>
           <div className="flex items-center gap-4">
             {customer.photoUrl ? (
-              <img src={customer.photoUrl} alt="Profile" className="w-16 h-16 rounded-2xl object-cover shadow-md" />
+              <img src={customer.photoUrl} alt="Profile" className="w-20 h-20 rounded-2xl object-cover shadow-lg border-2 border-white/50" />
             ) : (
-              <div className="w-16 h-16 rounded-2xl bg-white/20 glass flex items-center justify-center text-2xl font-bold text-white shadow-md">
+              <div className="w-20 h-20 rounded-2xl bg-white/30 backdrop-blur-md flex items-center justify-center text-3xl font-bold text-white shadow-lg border-2 border-white/50">
                 {customer.fullName.charAt(0).toUpperCase()}
               </div>
             )}
             <div>
-              <h2 className="text-xl font-bold text-white">{customer.fullName}</h2>
-              <p className="text-white/70 text-sm">{maskPhone(customer.phone)}</p>
-              <p className="text-white/60 text-xs">No. {customer.memberNo}</p>
-              <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                customer.status === 'active' ? 'bg-green-400/30 text-green-100' :
-                'bg-yellow-400/30 text-yellow-100'
+              <h2 className="text-xl font-bold text-white leading-tight mb-1">{customer.fullName}</h2>
+              <p className="text-white/90 text-sm">{maskPhone(customer.phone)}</p>
+              <p className="text-white/75 text-xs mt-0.5">ID: {customer.memberNo}</p>
+              <span className={`inline-block mt-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shadow-sm ${
+                customer.status === 'active' ? 'bg-green-400 text-green-950' :
+                'bg-yellow-400 text-yellow-950'
               }`}>
-                {customer.status === 'active' ? 'Aktif' : 'Belum Klaim'}
+                {customer.status === 'active' ? 'Member Aktif' : 'Belum Klaim'}
               </span>
             </div>
           </div>
 
           {/* Stats */}
-          <div className="flex gap-4 mt-4">
-            <div className="glass rounded-xl p-3 text-center flex-1">
-              <p className="text-white font-bold text-lg">{customer.purchaseCount}</p>
-              <p className="text-white/60 text-xs">Pembelian</p>
+          <div className="flex gap-3 mt-6">
+            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 text-center flex-1 border border-white/30 shadow-sm">
+              <p className="text-white font-bold text-2xl leading-none mb-1">{customer.purchaseCount}</p>
+              <p className="text-white/80 text-xs font-medium">Pembelian</p>
             </div>
-            <div className="glass rounded-xl p-3 text-center flex-1">
-              <p className="text-white font-bold text-lg">{formatIDR(customer.totalSpent)}</p>
-              <p className="text-white/60 text-xs">Total Belanja</p>
+            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 text-center flex-1 border border-white/30 shadow-sm">
+              <p className="text-white font-bold text-xl leading-none mb-1">{formatIDR(customer.totalSpent)}</p>
+              <p className="text-white/80 text-xs font-medium">Total Belanja</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="px-6 -mt-6 pb-8 space-y-4">
+      <div className="px-6 -mt-6 pb-8 space-y-4 relative z-20">
         {/* Alerts */}
         {error && (
           <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm animate-in">{error}</div>
