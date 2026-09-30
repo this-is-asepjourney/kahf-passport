@@ -37,25 +37,104 @@
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 5%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 5%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 262 80% 65%;
-    --primary-foreground: 240 10% 3.9%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 262 80% 65%;
-    --accent-foreground: 240 10% 3.9%;
-    --destructive: 0 62.8% 30.6%;
+    --background: 220 15% 10%; /* Rich dark navy/slate */
+    --foreground: 220 10% 95%;
+    --card: 220 15% 12%;
+    --card-foreground: 220 10% 95%;
+    --popover: 220 15% 12%;
+    --popover-foreground: 220 10% 95%;
+    --primary: 174 40% 60%;
+    --primary-foreground: 220 15% 10%;
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 220 10% 95%;
+    --muted: 220 15% 16%;
+    --muted-foreground: 220 10% 65%;
+    --accent: 174 40% 60%;
+    --accent-foreground: 220 15% 10%;
+    --destructive: 0 62.8% 40.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 262 80% 65%;
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 174 40% 60%;
+
+    /* Reversing White & Grays dynamically for v4 */
+    --color-white: #14181f; /* Elegant dark card background */
+    --color-black: #ffffff;
+    --color-gray-50: #1a1f28; 
+    --color-gray-100: #212833;
+    --color-gray-200: #2d3644;
+    --color-gray-300: #424e62;
+    --color-gray-400: #5f6c81;
+    --color-gray-500: #818ea1;
+    --color-gray-600: #9da8b4;
+    --color-gray-700: #c1c7d0;
+    --color-gray-800: #dce2e8;
+    --color-gray-900: #f4f6f8;
+    --color-gray-950: #ffffff;
+
+    /* Inverting semantic colors for dark mode */
+    --color-red-50: #3b1212;
+    --color-red-100: #541717;
+    --color-red-200: #7a1d1d;
+    --color-red-500: #ef4444;
+    --color-red-600: #f87171;
+    --color-red-700: #fca5a5;
+
+    --color-green-50: #0f2c1c;
+    --color-green-100: #143e26;
+    --color-green-200: #1a5633;
+    --color-green-500: #22c55e;
+    --color-green-600: #4ade80;
+    --color-green-700: #86efac;
+
+    --color-purple-50: #2e1040;
+    --color-purple-100: #42165c;
+    --color-purple-200: #5c1f82;
+    --color-purple-500: #a855f7;
+    --color-purple-600: #c084fc;
+    --color-purple-700: #d8b4fe;
+    
+    --color-orange-50: #3f1a08;
+    --color-orange-100: #59250b;
+    --color-orange-200: #7a3310;
+    --color-orange-500: #f97316;
+    --color-orange-600: #fb923c;
+    --color-orange-700: #fdba74;
+
+    /* Kahf specific adjustments for dark mode */
+    --Kahf-primary: 174 40% 60%;
+    --Kahf-primary-dark: 174 50% 75%;
+    --Kahf-peach: 352 40% 65%;
+    --Kahf-gold: 38 95% 65%;
+    
+    /* Fixing the gradient backgrounds so they don't look dead (dark elegant teal/peach) */
+    --gradient-hero: linear-gradient(135deg, hsl(174 40% 20%) 0%, hsl(352 30% 22%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(174 40% 20% / 0.3) 0%, hsl(352 30% 22% / 0.3) 100%);
+  }
+
+  /* Automatically invert arbitrary hardcoded hex classes used in the project */
+  .dark {
+    .text-\[\#2C5C59\] { color: hsl(174, 50%, 75%) !important; }
+    .bg-\[\#2C5C59\] { background-color: hsl(174, 50%, 75%) !important; }
+    .border-\[\#2C5C59\] { border-color: hsl(174, 50%, 75%) !important; }
+    
+    .text-\[\#6DB9B2\] { color: hsl(174, 40%, 65%) !important; }
+    .bg-\[\#6DB9B2\] { background-color: hsl(174, 40%, 30%) !important; }
+    .border-\[\#6DB9B2\] { border-color: hsl(174, 40%, 30%) !important; }
+    
+    .text-\[\#E2F0EF\] { color: #1a2a29 !important; }
+    .bg-\[\#E2F0EF\] { background-color: #1a2a29 !important; }
+    
+    .text-\[\#FAEBEC\] { color: #2a1a1c !important; }
+    .bg-\[\#FAEBEC\] { background-color: #2a1a1c !important; }
+    
+    .text-\[\#E8C5C8\] { color: hsl(352, 40%, 65%) !important; }
+    .bg-\[\#E8C5C8\] { background-color: hsl(352, 30%, 35%) !important; }
+    .border-\[\#E8C5C8\] { border-color: hsl(352, 30%, 35%) !important; }
+    
+    .bg-\[\#F8F9FA\] { background-color: #11141a !important; }
+    .text-\[\#D88C95\] { color: hsl(352, 40%, 65%) !important; }
+    .bg-\[\#D88C95\] { background-color: hsl(352, 40%, 45%) !important; }
   }
 }
 

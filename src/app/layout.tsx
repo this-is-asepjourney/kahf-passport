@@ -3,7 +3,9 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth/AuthContext';
 import { QueryProvider } from '@/components/providers/QueryProvider';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -39,14 +41,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" className={inter.variable}>
-      <body className="min-h-screen bg-background font-sans antialiased">
-        <QueryProvider>
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </QueryProvider>
+    <html lang="id" className={inter.variable} suppressHydrationWarning>
+      <body className="min-h-screen bg-background text-foreground font-sans antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <QueryProvider>
+            <AuthProvider>
+              {children}
+              <div className="fixed bottom-6 right-6 z-50 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full shadow-lg border border-gray-200 dark:border-gray-800">
+                <ThemeToggle />
+              </div>
+              <Toaster />
+            </AuthProvider>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
