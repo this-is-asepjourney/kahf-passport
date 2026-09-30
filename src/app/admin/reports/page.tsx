@@ -38,35 +38,26 @@ export default function RegionalReportPage() {
     try {
       // Fetch all regions
       const regionsSnap = await getDocs(collection(db, 'regions'));
-      let regions = regionsSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+      const regions = regionsSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
 
       // Fetch all stores
       const storesSnap = await getDocs(collection(db, 'stores'));
       const stores = storesSnap.docs.map(doc => ({ id: doc.id, regionId: doc.data().regionId }));
 
-      // Fallback dummy data if no regions exist in the database
-      if (regions.length === 0) {
-        regions = [
-          { id: 'reg1', name: 'Jabodetabek' },
-          { id: 'reg2', name: 'Jawa Barat' },
-          { id: 'reg3', name: 'Jawa Tengah & DIY' },
-          { id: 'reg4', name: 'Jawa Timur' },
-          { id: 'reg5', name: 'Sumatera' }
-        ];
-      }
+      // Remove dummy fallback data
 
       // Build the report array
       const reportData: RegionReport[] = regions.map(r => {
         const regionStores = stores.filter(s => s.regionId === r.id);
-        const storeCount = regionStores.length > 0 ? regionStores.length : Math.floor(Math.random() * 20) + 5;
+        const storeCount = regionStores.length;
         
         return {
           id: r.id,
           name: r.name,
           storeCount: storeCount,
-          baCount: Math.floor(Math.random() * 50) + 10, // Simulated for now since fetching all users is heavy
-          customerCount: Math.floor(Math.random() * 5000) + 1000,
-          totalSales: Math.floor(Math.random() * 100000000) + 20000000,
+          baCount: 0, // Should be fetched from actual BA documents
+          customerCount: 0, // Should be fetched from actual customer documents
+          totalSales: 0, // Should be fetched from actual sales documents
         };
       });
 

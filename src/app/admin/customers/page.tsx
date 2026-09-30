@@ -22,33 +22,34 @@ export default function AdminCustomersPage() {
       router.replace('/');
       return;
     }
-    if (!loading && user) loadCustomers();
-  }, [user, loading, filter, loadCustomers, router]);
 
-  const loadCustomers = async () => {
-    setDataLoading(true);
-    try {
-      let q = query(
-        collection(db, 'customers'),
-        orderBy('createdAt', 'desc'),
-        limit(50)
-      );
-
-      if (filter !== 'all') {
-        q = query(
+    const loadCustomers = async () => {
+      setDataLoading(true);
+      try {
+        let q = query(
           collection(db, 'customers'),
-          where('status', '==', filter),
           orderBy('createdAt', 'desc'),
           limit(50)
         );
-      }
 
-      const snap = await getDocs(q);
-      setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[]);
-    } finally {
-      setDataLoading(false);
-    }
-  };
+        if (filter !== 'all') {
+          q = query(
+            collection(db, 'customers'),
+            where('status', '==', filter),
+            orderBy('createdAt', 'desc'),
+            limit(50)
+          );
+        }
+
+        const snap = await getDocs(q);
+        setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[]);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    if (!loading && user) loadCustomers();
+  }, [user, loading, filter, router]);
 
   return (
     <div className="min-h-screen bg-gray-50">

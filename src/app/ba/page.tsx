@@ -14,8 +14,6 @@ interface BaStats {
   pendingFollowUp: number;
   repeatPurchaseRate: number;
   totalSales: number;
-  customersGrowth: number;
-  ordersGrowth: number;
 }
 
 interface RecentCustomer {
@@ -46,9 +44,7 @@ export default function BaDashboardPage() {
     ordersToday: 0, 
     pendingFollowUp: 0, 
     repeatPurchaseRate: 0,
-    totalSales: 0,
-    customersGrowth: 0,
-    ordersGrowth: 0
+    totalSales: 0
   });
   const [storeName, setStoreName] = useState('');
   const [recentCustomers, setRecentCustomers] = useState<RecentCustomer[]>([]);
@@ -141,9 +137,7 @@ export default function BaDashboardPage() {
         ordersToday,
         totalSales,
         pendingFollowUp: followUpList.length,
-        repeatPurchaseRate,
-        customersGrowth: 12, // Dummy for now
-        ordersGrowth: 20 // Dummy for now
+        repeatPurchaseRate
       });
       setRecentCustomers(recentList);
 
@@ -199,9 +193,6 @@ export default function BaDashboardPage() {
               <h3 className="text-3xl font-bold text-gray-900 mt-1">{formatCompact(stats.totalCustomers)}</h3>
             </div>
           </div>
-          <p className="text-xs text-[#2C5C59] font-medium mt-6 bg-[#E2F0EF]/50 inline-block w-fit px-2.5 py-1 rounded-md">
-            +{stats.customersGrowth}% dari bulan lalu
-          </p>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
@@ -212,9 +203,6 @@ export default function BaDashboardPage() {
               <h3 className="text-3xl font-bold text-gray-900 mt-1">{stats.ordersToday}</h3>
             </div>
           </div>
-          <p className="text-xs text-blue-600 font-medium mt-6 bg-blue-50/80 inline-block w-fit px-2.5 py-1 rounded-md">
-            +{stats.ordersGrowth}% dari kemarin
-          </p>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
@@ -238,9 +226,6 @@ export default function BaDashboardPage() {
               <h3 className="text-3xl font-bold text-gray-900 mt-1">{stats.repeatPurchaseRate}%</h3>
             </div>
           </div>
-          <p className="text-xs text-purple-600 font-medium mt-6 bg-purple-50/80 inline-block w-fit px-2.5 py-1 rounded-md">
-            +{Math.floor(stats.repeatPurchaseRate / 3)}% dari bulan lalu
-          </p>
         </div>
       </div>
 

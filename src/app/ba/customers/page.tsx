@@ -21,14 +21,9 @@ function CustomerSearchContent() {
   const initialQuery = searchParams.get('q') || '';
   
   const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState<CustomerResult[]>([, handleSearch]);
+  const [results, setResults] = useState<CustomerResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-
-  useEffect(() => {
-    if (initialQuery && initialQuery.length > 0 && initialQuery.length < 3) return;
-    handleSearch(initialQuery);
-  }, [initialQuery, handleSearch]);
 
   const handleSearch = async (searchStr: string = query) => {
     // If length is > 0 but < 3, we wait. If 0, we fetch the default list.
@@ -42,11 +37,17 @@ function CustomerSearchContent() {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       const data = await res.json();
-      setResults(data.customers ?? [, handleSearch]);
+      setResults(data.customers ?? []);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (initialQuery && initialQuery.length > 0 && initialQuery.length < 3) return;
+    handleSearch(initialQuery);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   return (
     <div className="min-h-screen bg-gray-50">
