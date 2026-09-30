@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
@@ -22,12 +22,7 @@ export default function PassportProfilePage() {
     city: '',
   });
 
-  useEffect(() => {
-    if (!loading && !user) { router.replace('/login'); return; }
-    if (!loading && user) loadData();
-  }, [user, loading, loadData, router]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const q = query(collection(db, 'customers'), where('uid', '==', user?.uid));
       const snap = await getDocs(q);
@@ -43,7 +38,12 @@ export default function PassportProfilePage() {
     } finally {
       setDataLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (!loading && !user) { router.replace('/login'); return; }
+    if (!loading && user) loadData();
+  }, [user, loading, loadData, router]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -30,12 +30,7 @@ export default function LoyaltyPage() {
   const [redeeming, setRedeeming] = useState<string | null>(null);
   const [tab, setTab] = useState<'rewards' | 'history'>('rewards');
 
-  useEffect(() => {
-    if (!loading && !user) { router.replace('/login'); return; }
-    if (!loading && user) loadData();
-  }, [user, loading, loadData, router]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user) return;
     try {
       const custQ = query(collection(db, 'customers'), where('uid', '==', user.uid));
@@ -72,7 +67,12 @@ export default function LoyaltyPage() {
     } finally {
       setDataLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (!loading && !user) { router.replace('/login'); return; }
+    if (!loading && user) loadData();
+  }, [user, loading, loadData, router]);
 
   const handleRedeem = async (rewardId: string) => {
     if (!customerId) return;

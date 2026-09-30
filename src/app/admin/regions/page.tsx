@@ -11,7 +11,7 @@ import Link from 'next/link';
 export default function AdminRegionsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [regions, setRegions] = useState<Region[]>([, router]);
+  const [regions, setRegions] = useState<Region[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {

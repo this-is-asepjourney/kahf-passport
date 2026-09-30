@@ -12,7 +12,7 @@ import Link from 'next/link';
 export default function AdminPurchasesPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [purchases, setPurchases] = useState<Purchase[]>([, router]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {

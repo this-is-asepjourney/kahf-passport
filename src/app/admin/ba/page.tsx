@@ -1,28 +1,39 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
-import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import Link from 'next/link';
-import { formatDate, formatIDR } from '@/lib/utils';
-import type { DailyBaSummary } from '@/types';
+import { formatIDR } from '@/lib/utils';
+import type { Purchase, Store } from '@/types';
 
 interface BaEntry {
   uid: string;
   name: string;
-  storeId: string;
+  employeeCode?: string;
+  storeId?: string;
+  storeName?: string;
   orders: number;
   sales: number;
   isActive: boolean;
 }
+
+type PeriodFilter = 'today' | '7days' | 'month' | '30days' | 'all';
 
 export default function AdminBaPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [baList, setBaList] = useState<BaEntry[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const [period, setPeriod] = useState<PeriodFilter>('month');
+  const [search, setSearch] = useState('');
+
+  // Raw data from Firestore
+  const [rawProfiles, setRawProfiles] = useState<any[]>([]);
+  const [rawPurchases, setRawPurchases] = useState<Purchase[]>([]);
+  const [rawStores, setRawStores] = useState<Store[]>([]);
 
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
@@ -30,103 +41,270 @@ export default function AdminBaPage() {
       router.replace('/'); return;
     }
     if (!loading && user) loadData();
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   const loadData = async () => {
+    setDataLoading(true);
     try {
-      // Get BA profiles
+      // 1. Fetch BA profiles
       const baProfilesSnap = await getDocs(collection(db, 'baProfiles'));
       const profiles = baProfilesSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+      setRawProfiles(profiles);
 
-      // Get today's BA summaries
-      const today = new Date().toISOString().slice(0, 10);
-      const summariesSnap = await getDocs(
-        query(collection(db, 'dailyBaSummary'), where('date', '==', today))
+      // 2. Fetch users to get BA names
+      const usersSnap = await getDocs(
+        query(collection(db, 'users'), where('role', '==', 'ba'))
       );
-      const summaryMap = new Map<string, { orders: number; sales: number; baName: string }>();
-      summariesSnap.docs.forEach(d => {
-        const data = d.data() as DailyBaSummary;
-        summaryMap.set(data.baId, { orders: data.orders, sales: data.sales, baName: data.baName });
+      const userMap = new Map<string, string>();
+      usersSnap.docs.forEach(d => {
+        const u = d.data();
+        userMap.set(d.id, u.name || u.displayName || u.email || d.id);
       });
 
-      const entries: BaEntry[] = profiles.map(profile => {
-        const p = profile as Record<string, any>;
-        const summary = summaryMap.get(p.uid as string);
-        return {
-          uid: p.uid as string,
-          name: summary?.baName ?? p.uid as string,
-          storeId: p.storeId as string,
-          orders: summary?.orders ?? 0,
-          sales: summary?.sales ?? 0,
-          isActive: (p.isActive as boolean) ?? true,
-        };
-      });
+      // 3. Fetch Stores
+      const storesSnap = await getDocs(collection(db, 'stores'));
+      const stores = storesSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Store[];
+      setRawStores(stores);
 
-      setBaList(entries.sort((a, b) => b.sales - a.sales));
+      // 4. Fetch Purchases
+      const purchasesSnap = await getDocs(collection(db, 'purchases'));
+      const purchases = purchasesSnap.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
+      })) as Purchase[];
+      setRawPurchases(purchases);
+    } catch (err) {
+      console.error('Failed to load BA performance data:', err);
     } finally {
       setDataLoading(false);
     }
   };
 
+  // Compute BA performance based on active period filter
+  const computedBaList = useMemo<BaEntry[]>(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+
+    // Filter purchases by period
+    const filteredPurchases = rawPurchases.filter(p => {
+      if (p.status !== 'valid') return false;
+      const pTime = new Date(p.purchasedAt).getTime();
+      const pDate = new Date(p.purchasedAt);
+
+      if (period === 'today') return pTime >= todayStart;
+      if (period === '7days') return pTime >= sevenDaysAgo;
+      if (period === '30days') return pTime >= thirtyDaysAgo;
+      if (period === 'month') return pDate.getMonth() === now.getMonth() && pDate.getFullYear() === now.getFullYear();
+      return true; // 'all'
+    });
+
+    // Map store ID to store name
+    const storeMap = new Map<string, string>();
+    rawStores.forEach(s => storeMap.set(s.id, s.name));
+
+    // Aggregate orders & sales per baId
+    const baAggMap = new Map<string, { orders: number; sales: number; baNameSnapshot?: string }>();
+    filteredPurchases.forEach(p => {
+      if (!p.baId) return;
+      const existing = baAggMap.get(p.baId) || { orders: 0, sales: 0, baNameSnapshot: p.baNameSnapshot };
+      existing.orders += 1;
+      existing.sales += p.totalAmount || 0;
+      if (p.baNameSnapshot) existing.baNameSnapshot = p.baNameSnapshot;
+      baAggMap.set(p.baId, existing);
+    });
+
+    // Merge with raw BA profiles
+    const entries: BaEntry[] = rawProfiles.map(p => {
+      const agg = baAggMap.get(p.uid);
+      return {
+        uid: p.uid,
+        name: agg?.baNameSnapshot || p.name || `BA-${p.employeeCode || p.uid.slice(0, 5)}`,
+        employeeCode: p.employeeCode,
+        storeId: p.storeId,
+        storeName: p.storeId ? storeMap.get(p.storeId) || p.storeId : '-',
+        orders: agg?.orders || 0,
+        sales: agg?.sales || 0,
+        isActive: p.isActive !== false,
+      };
+    });
+
+    // Sort by sales descending
+    entries.sort((a, b) => b.sales - a.sales);
+
+    // Apply search filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return entries.filter(e =>
+        e.name.toLowerCase().includes(q) ||
+        (e.employeeCode && e.employeeCode.toLowerCase().includes(q)) ||
+        (e.storeName && e.storeName.toLowerCase().includes(q))
+      );
+    }
+
+    return entries;
+  }, [rawProfiles, rawPurchases, rawStores, period, search]);
+
+  const totalSales = computedBaList.reduce((sum, b) => sum + b.sales, 0);
+  const totalOrders = computedBaList.reduce((sum, b) => sum + b.orders, 0);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="gradient-hero px-6 pt-12 pb-16 relative">
-        <div className="flex items-center gap-3">
-          <Link href="/admin" className="text-white/80 hover:text-white">←</Link>
-          <h1 className="text-xl font-bold text-white">Brand Ambassador</h1>
-        </div>
-        <p className="text-white/60 text-sm mt-1 ml-8 mb-4">Performa hari ini</p>
-        
-        {user?.role === 'super_admin' && (
-          <div className="absolute -bottom-5 left-6 right-6">
-            <Link 
-              href="/admin/users" 
-              className="block w-full py-3 bg-white text-purple-700 font-semibold text-center rounded-2xl shadow-lg hover:shadow-xl transition-all"
-            >
-              ➕ Tambah / Kelola Akses BA
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <Link href="/admin" className="p-2 bg-white rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+              ←
             </Link>
+            <h1 className="text-2xl font-bold text-gray-900">BA Performance</h1>
           </div>
+          <p className="text-sm text-gray-500 mt-1 ml-11">
+            Monitoring performa penjualan dan aktivitas Brand Ambassador di seluruh toko.
+          </p>
+        </div>
+
+        {user?.role === 'super_admin' && (
+          <Link
+            href="/admin/users"
+            className="px-4 py-2.5 bg-[#2C5C59] text-white text-sm font-bold rounded-xl shadow-lg shadow-[#6DB9B2]/20 hover:bg-[#1f4240] transition-colors flex items-center gap-2"
+          >
+            ➕ Kelola Akses BA
+          </Link>
         )}
       </div>
 
-      <div className="px-6 pt-10 pb-8 space-y-3">
-        {dataLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="w-8 h-8 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
-          </div>
-        ) : baList.length === 0 ? (
-          <div className="bg-white rounded-3xl shadow-sm p-8 text-center">
-            <p className="text-4xl mb-2">👩‍💼</p>
-            <p className="text-gray-500">Belum ada Brand Ambassador</p>
-          </div>
-        ) : (
-          baList.map((ba, i) => (
-            <div key={ba.uid} className="bg-white rounded-3xl shadow-sm p-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                  i === 0 ? 'bg-yellow-400 text-white' :
-                  i === 1 ? 'bg-gray-300 text-white' :
-                  i === 2 ? 'bg-amber-600 text-white' :
-                  'bg-gray-100 text-gray-500'
-                }`}>
-                  {i + 1}
-                </div>
-                <div className="w-12 h-12 rounded-2xl gradient-hero flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                  {ba.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{ba.name}</p>
-                  <p className="text-xs text-gray-500 font-mono">{ba.uid.slice(0, 12)}...</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="font-bold text-purple-700 text-sm">{formatIDR(ba.sales)}</p>
-                  <p className="text-xs text-gray-400">{ba.orders} transaksi</p>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
+          <p className="text-xs text-gray-500 font-medium">Total Brand Ambassador</p>
+          <h3 className="text-2xl font-bold text-gray-900 mt-1">{rawProfiles.length} BA</h3>
+          <p className="text-[11px] text-[#2C5C59] font-semibold mt-1">
+            {rawProfiles.filter(p => p.isActive !== false).length} aktif bertugas
+          </p>
+        </div>
+
+        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
+          <p className="text-xs text-gray-500 font-medium">Total Transaksi ({period})</p>
+          <h3 className="text-2xl font-bold text-gray-900 mt-1">{totalOrders.toLocaleString('id-ID')}</h3>
+          <p className="text-[11px] text-gray-400 mt-1">Transaksi terverifikasi</p>
+        </div>
+
+        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
+          <p className="text-xs text-gray-500 font-medium">Total Omset Penjualan BA</p>
+          <h3 className="text-2xl font-bold text-[#2C5C59] mt-1">{formatIDR(totalSales)}</h3>
+          <p className="text-[11px] text-gray-400 mt-1">Akumulasi sesuai periode terpilih</p>
+        </div>
       </div>
+
+      {/* Table & Filters Card */}
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        
+        {/* Controls */}
+        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50/40">
+          {/* Period Filter */}
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+            <span className="text-xs font-bold text-gray-500 mr-1">Periode:</span>
+            {[
+              { id: 'today', label: 'Hari Ini' },
+              { id: '7days', label: '7 Hari' },
+              { id: 'month', label: 'Bulan Ini' },
+              { id: '30days', label: '30 Hari' },
+              { id: 'all', label: 'Semua' },
+            ].map(p => (
+              <button
+                key={p.id}
+                onClick={() => setPeriod(p.id as PeriodFilter)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
+                  period === p.id
+                    ? 'bg-[#2C5C59] text-white shadow-sm'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Bar */}
+          <div className="w-full sm:w-72">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama BA / kode / toko..."
+              className="w-full px-3.5 py-2 text-xs bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6DB9B2]"
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          {dataLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-8 h-8 rounded-full border-4 border-[#E2F0EF] border-t-[#2C5C59] animate-spin" />
+            </div>
+          ) : computedBaList.length === 0 ? (
+            <div className="p-8 text-center text-gray-500 text-sm">
+              Belum ada data Brand Ambassador yang cocok.
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/50">
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Peringkat & BA</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Penempatan Toko</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Pesanan</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Penjualan</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {computedBaList.map((ba, idx) => (
+                  <tr key={ba.uid} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                          idx === 0 ? 'bg-[#E2F0EF] text-[#2C5C59] border border-[#6DB9B2]/30' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {idx + 1}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">{ba.name}</p>
+                          <p className="text-[10px] text-gray-400">Kode: {ba.employeeCode || '-'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-xs font-medium text-gray-700 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
+                        🏬 {ba.storeName}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right font-semibold text-gray-800 text-sm">
+                      {ba.orders.toLocaleString('id-ID')}
+                    </td>
+                    <td className="px-6 py-4 text-right font-bold text-[#2C5C59] text-sm">
+                      {formatIDR(ba.sales)}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                        ba.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                      }`}>
+                        {ba.isActive ? 'Aktif' : 'Nonaktif'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+      </div>
+
     </div>
   );
 }

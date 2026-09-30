@@ -12,5 +12,9 @@ BA ->Dashboard/beranda memantau pergerakan customer, jadi mengetahui berapa bany
    -> follow up ba memiliki pekerjaan untuk melakukan follow up kepada customer yang > 25 hari setelah pembelian terakhir.
    -> Laporan / Riwayat untuk menampilkan hasil riwayat transaksi yang sudah masuk atau ia capai jadi riwayat atau transaksi per akun setiap ba memiliki riwayat dan transaksi nya sendiri
 
+customer -> Riwayat pembelian untuk melihat riwayat pembelian yang sudah dilakukan
+         -> Skin profile untuk mengisi profil kulit sesuai dengan opsi yang tertera
+         -> Rekomendasi personal menampilkan produk yang sesuai dengan keadaan kulit yang sudah diisi sesuai dengan rekomendasi ba
+         ->
  
 

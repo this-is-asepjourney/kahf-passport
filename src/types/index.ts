@@ -78,6 +78,9 @@ export interface BaProfile {
 export interface ProductCategory {
   id: string;
   name: string;
+  slug?: string;
+  description?: string;
+  icon?: string;
 }
 
 export interface Product {

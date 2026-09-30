@@ -71,7 +71,7 @@ export const productSchema = z.object({
   description: z.string().max(500).optional(),
   imageUrl: z.string().url('URL gambar tidak valid').optional(),
   defaultPrice: z.number().positive('Harga harus > 0'),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 
 export const storeSchema = z.object({
@@ -80,7 +80,14 @@ export const storeSchema = z.object({
   name: z.string().min(1).max(200),
   city: z.string().min(1).max(100),
   address: z.string().max(500).optional(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
+});
+
+export const productCategorySchema = z.object({
+  name: z.string().min(2, 'Nama kategori minimal 2 karakter').max(100),
+  slug: z.string().min(2, 'Kode/Slug minimal 2 karakter').max(50).optional(),
+  description: z.string().max(300).optional(),
+  icon: z.string().max(20).optional(),
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
@@ -92,4 +99,5 @@ export type RecordPurchaseFormValues = z.infer<typeof recordPurchaseSchema>;
 export type VoidPurchaseFormValues = z.infer<typeof voidPurchaseSchema>;
 export type QuickRegisterCustomerFormValues = z.infer<typeof quickRegisterCustomerSchema>;
 export type ProductFormValues = z.infer<typeof productSchema>;
+export type ProductCategoryFormValues = z.infer<typeof productCategorySchema>;
 export type StoreFormValues = z.infer<typeof storeSchema>;

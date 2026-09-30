@@ -11,7 +11,7 @@ import Link from 'next/link';
 export default function AdminStoresPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [stores, setStores] = useState<Store[]>([, router]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
