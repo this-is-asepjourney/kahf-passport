@@ -201,6 +201,7 @@ export default function BaCustomerDetailPage() {
         },
         body: JSON.stringify({
           customerId: customer.id,
+          storeId: user?.storeId || undefined,
           invoiceNo: values.invoiceNo,
           purchasedAt: values.purchasedAt,
           items: values.items.map((item) => {
