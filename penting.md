@@ -4,6 +4,7 @@
 - **Dashboard**: Monitoring penjualan nasional, perkembangan produk, dan interaksi antara Beauty Advisor (BA) dan customer.
 - **Customer Insight**: Melihat data lengkap profil pelanggan, riwayat transaksi, dan manajemen akun.
 - **Product Insight**: Memantau katalog produk kecantikan Wardah, manajemen kategori, harga, dan SKU (CRUD).
+- **Kelola Beauty Advisor & Akses**: Admin dapat mendaftarkan akun BA baru secara instan (nama, email, password acak, no WA, dan penugasan counter Wardah), mengedit data BA, mereset password, dan mengaktifkan/menonaktifkan akun langsung dari dashboard tanpa perlu membuka Firebase Console atau menyalin UID.
 - **BA Performance**: Memantau performa dan kontribusi Beauty Advisor berdasarkan transaksi riil dan konsultasi.
 - **Regional Report**: Analisis performa dan ekspor laporan penjualan berdasarkan wilayah counter/kota.
 - **Pengaturan Akun**: Preferensi sistem, notifikasi, dan keamanan akun.

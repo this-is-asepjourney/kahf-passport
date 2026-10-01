@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin', label: 'Dashboard Nasional', icon: '🏠' },
     { href: '/admin/customers', label: 'Customer Insight', icon: '👥' },
     { href: '/admin/products', label: 'Product Insight', icon: '📦' },
-    { href: '/admin/ba', label: 'BA Performance', icon: '👩‍💼' },
+    { href: '/admin/ba', label: 'Kelola Beauty Advisor', icon: '👩‍💼' },
     { href: '/admin/reports', label: 'Regional Report', icon: '📊' },
     { href: '/admin/settings', label: 'Pengaturan', icon: '⚙️' },
   ];
