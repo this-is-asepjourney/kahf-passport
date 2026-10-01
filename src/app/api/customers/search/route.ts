@@ -14,7 +14,7 @@ interface CustomerDocData {
   status: string;
   purchaseCount: number;
   lastPurchaseAt: string | null;
-  createdAt?: any;
+  createdAt?: string | null;
   score?: number;
 }
 
@@ -86,9 +86,9 @@ export async function GET(request: NextRequest) {
     const digitsOnly = cleanQuery.replace(/[^0-9]/g, '');
 
     // Kumpulkan dokumen dari berbagai strategi query Firestore
-    const candidateDocsMap = new Map<string, any>();
+    const candidateDocsMap = new Map<string, Record<string, unknown>>();
 
-    const queryPromises: Promise<any>[] = [];
+    const queryPromises: Promise<void>[] = [];
 
     // Strategi A: Ambil pool 150 customer terbaru untuk pencarian substring in-memory
     queryPromises.push(
@@ -214,9 +214,10 @@ export async function GET(request: NextRequest) {
       count: finalCustomers.length,
       customers: finalCustomers,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Gagal mencari customer';
     console.error('[GET /api/customers/search]', error);
-    return NextResponse.json({ error: error.message || 'Gagal mencari customer' }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -318,8 +319,9 @@ export async function POST(request: NextRequest) {
         status: 'unclaimed',
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Gagal mendaftarkan customer';
     console.error('[quick-register-customer]', error);
-    return NextResponse.json({ error: error.message || 'Gagal mendaftarkan customer' }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

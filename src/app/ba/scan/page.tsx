@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
@@ -15,16 +14,12 @@ import {
   Search,
   ArrowLeft,
   QrCode,
-  ShoppingBag,
   Plus,
   Trash2,
   CheckCircle2,
   AlertCircle,
-  Camera,
   Users,
-  ChevronRight,
   ExternalLink,
-  Sparkles,
 } from 'lucide-react';
 
 export default function BaScanAndBarcodePage() {
@@ -68,7 +63,6 @@ function BaScanAndBarcodeContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Camera Scanner States (Alternative)
-  const [isStreaming, setIsStreaming] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -86,6 +80,35 @@ function BaScanAndBarcodeContent() {
       router.replace('/');
     }
   }, [user, loading, router]);
+
+  // Load purchases when a customer is selected
+  const loadCustomerPurchases = useCallback(async (customerId: string) => {
+    try {
+      const q = query(
+        collection(db, 'purchases'),
+        where('customerId', '==', customerId),
+        orderBy('purchasedAt', 'desc'),
+        limit(5)
+      );
+      const snap = await getDocs(q);
+      const list = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
+      })) as Purchase[];
+      setCustomerPurchases(list);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const selectCustomer = useCallback((c: Customer) => {
+    setSelectedCustomer(c);
+    setCartItems([]);
+    setTransactionSuccess(false);
+    setErrorMsg(null);
+    loadCustomerPurchases(c.id);
+  }, [loadCustomerPurchases]);
 
   // Load Recent Customers and Products
   useEffect(() => {
@@ -120,28 +143,7 @@ function BaScanAndBarcodeContent() {
     if (user) {
       initData();
     }
-  }, [user, paramCustomerId]);
-
-  // Load purchases when a customer is selected
-  const loadCustomerPurchases = useCallback(async (customerId: string) => {
-    try {
-      const q = query(
-        collection(db, 'purchases'),
-        where('customerId', '==', customerId),
-        orderBy('purchasedAt', 'desc'),
-        limit(5)
-      );
-      const snap = await getDocs(q);
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-        purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
-      })) as Purchase[];
-      setCustomerPurchases(list);
-    } catch (err) {
-      console.error(err);
-    }
-  }, []);
+  }, [user, paramCustomerId, selectCustomer]);
 
   // Handle Search using unified intelligent customer search API
   const handleSearch = async (e?: React.FormEvent) => {
@@ -164,19 +166,12 @@ function BaScanAndBarcodeContent() {
       if (matched.length === 1) {
         selectCustomer(matched[0]);
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal mencari customer');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal mencari customer';
+      setErrorMsg(message);
     } finally {
       setSearching(false);
     }
-  };
-
-  const selectCustomer = (c: Customer) => {
-    setSelectedCustomer(c);
-    setCartItems([]);
-    setTransactionSuccess(false);
-    setErrorMsg(null);
-    loadCustomerPurchases(c.id);
   };
 
   // Add Item to Purchase Cart
@@ -244,8 +239,9 @@ function BaScanAndBarcodeContent() {
       setTransactionSuccess(true);
       setCartItems([]);
       loadCustomerPurchases(selectedCustomer.id);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Terjadi kesalahan saat menyimpan pembelian');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Terjadi kesalahan saat menyimpan pembelian';
+      setErrorMsg(message);
     } finally {
       setIsSubmittingPurchase(false);
     }
@@ -265,7 +261,6 @@ function BaScanAndBarcodeContent() {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    setIsStreaming(false);
   }, []);
 
   const handleCameraScanResult = useCallback(
@@ -329,12 +324,12 @@ function BaScanAndBarcodeContent() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
-        setIsStreaming(true);
         isScanningActiveRef.current = true;
         animationFrameRef.current = requestAnimationFrame(scanFrame);
       }
-    } catch (err: any) {
-      setCameraError(err.message || 'Gagal menyalakan kamera');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal menyalakan kamera';
+      setCameraError(message);
     }
   }, [scanFrame, stopCamera]);
 

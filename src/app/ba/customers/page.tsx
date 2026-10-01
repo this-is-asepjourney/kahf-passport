@@ -11,16 +11,11 @@ import {
   Phone,
   QrCode,
   FileText,
-  User,
-  CheckCircle2,
-  Clock,
-  Sparkles,
   RefreshCw,
   X,
   ChevronRight,
   Filter,
 } from 'lucide-react';
-import { formatDateTime } from '@/lib/utils';
 
 interface CustomerResult {
   id: string;
@@ -44,14 +39,12 @@ function CustomerSearchContent() {
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<CustomerResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'unclaimed'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'purchases' | 'name'>('newest');
 
   // Search Function
   const fetchCustomers = useCallback(async (searchStr: string) => {
     setLoading(true);
-    setSearched(true);
     try {
       const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch(`/api/customers/search?q=${encodeURIComponent(searchStr.trim())}`, {
@@ -169,14 +162,14 @@ function CustomerSearchContent() {
               Status:
             </span>
             {[
-              { id: 'all', label: 'Semua Status' },
-              { id: 'active', label: 'Aktif' },
-              { id: 'unclaimed', label: 'Belum Klaim Akun' },
+              { id: 'all' as const, label: 'Semua Status' },
+              { id: 'active' as const, label: 'Aktif' },
+              { id: 'unclaimed' as const, label: 'Belum Klaim Akun' },
             ].map((f) => (
               <button
                 key={f.id}
                 type="button"
-                onClick={() => setStatusFilter(f.id as any)}
+                onClick={() => setStatusFilter(f.id)}
                 className={`px-3 py-1.5 rounded-xl font-bold transition-colors whitespace-nowrap ${
                   statusFilter === f.id
                     ? 'bg-[#277A73] text-white shadow-xs'
@@ -192,7 +185,7 @@ function CustomerSearchContent() {
             <span className="text-gray-400">Urutkan:</span>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as 'newest' | 'purchases' | 'name')}
               className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#277A73]"
             >
               <option value="newest">Paling Baru Terdaftar</option>
