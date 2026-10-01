@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
+import { useEffect, useState, useRef, useCallback, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import Link from 'next/link';
@@ -8,19 +8,53 @@ import { doc, getDoc, collection, query, where, getDocs, limit, orderBy } from '
 import { db, auth } from '@/lib/firebase/client';
 import QRCode from 'react-qr-code';
 import jsQR from 'jsqr';
-import type { Customer, Product, Purchase } from '@/types';
-import { formatIDR, formatDate } from '@/lib/utils';
+import type { Customer, Product, ProductCategory, Purchase } from '@/types';
+import { formatIDR, formatDate, formatDateTime } from '@/lib/utils';
 import {
   Search,
   ArrowLeft,
   QrCode,
   Plus,
+  Minus,
   Trash2,
   CheckCircle2,
   AlertCircle,
   Users,
   ExternalLink,
+  ShoppingBag,
+  Sparkles,
+  Printer,
+  Share2,
+  Clock,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Building,
+  RotateCcw,
+  Check,
+  ChevronDown,
+  X,
+  Receipt,
+  FileText,
+  BadgePercent,
 } from 'lucide-react';
+
+interface CartItem {
+  productId: string;
+  productName: string;
+  sku: string;
+  qty: number;
+  unitPrice: number;
+  subtotal: number;
+  isCustomPrice?: boolean;
+}
+
+interface RecommendedItem {
+  productId: string;
+  productName?: string;
+  reason?: string;
+  price?: number;
+}
 
 export default function BaScanAndBarcodePage() {
   return (
@@ -42,7 +76,7 @@ function BaScanAndBarcodeContent() {
   const searchParams = useSearchParams();
   const paramCustomerId = searchParams.get('customerId') || '';
 
-  // Mode: 'generate' (BA selects customer and shows barcode) vs 'camera' (BA scans QR)
+  // Mode: 'generate' (BA selects customer, updates purchase & shows barcode) vs 'camera' (BA scans QR)
   const [activeTab, setActiveTab] = useState<'generate' | 'camera'>('generate');
 
   // Customer Search & Selection State
@@ -51,16 +85,39 @@ function BaScanAndBarcodeContent() {
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [recentCustomers, setRecentCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerLoyalty, setCustomerLoyalty] = useState<{ currentPoints: number; tier: string } | null>(null);
   const [customerPurchases, setCustomerPurchases] = useState<Purchase[]>([]);
+  const [customerRecommendations, setCustomerRecommendations] = useState<RecommendedItem[]>([]);
 
-  // Purchase Recording Form State
+  // Products and Categories
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedProductId, setSelectedProductId] = useState('');
   const [itemQty, setItemQty] = useState(1);
-  const [cartItems, setCartItems] = useState<{ productId: string; productName: string; sku: string; qty: number; unitPrice: number; subtotal: number }[]>([]);
+
+  // Cart Management
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [customInvoiceNo, setCustomInvoiceNo] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'qris' | 'cash' | 'debit' | 'transfer'>('qris');
+  const [cashTendered, setCashTendered] = useState<number | ''>('');
+  const [transactionNotes, setTransactionNotes] = useState('');
+
+  // Submit and Void states
   const [isSubmittingPurchase, setIsSubmittingPurchase] = useState(false);
   const [transactionSuccess, setTransactionSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Receipt Modal State
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState<Purchase | null>(null);
+
+  // Void Modal State
+  const [voidModalOpen, setVoidModalOpen] = useState(false);
+  const [purchaseToVoid, setPurchaseToVoid] = useState<Purchase | null>(null);
+  const [voidReasonText, setVoidReasonText] = useState('');
+  const [isVoiding, setIsVoiding] = useState(false);
 
   // Camera Scanner States (Alternative)
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -81,7 +138,7 @@ function BaScanAndBarcodeContent() {
     }
   }, [user, loading, router]);
 
-  // Load purchases when a customer is selected
+  // Load customer purchases & loyalty
   const loadCustomerPurchases = useCallback(async (customerId: string) => {
     try {
       const idToken = await auth.currentUser?.getIdToken();
@@ -95,33 +152,100 @@ function BaScanAndBarcodeContent() {
       if (data.customer) {
         setSelectedCustomer((prev) => (prev && prev.id === customerId ? { ...prev, ...data.customer } : prev));
       }
+      if (data.loyalty) {
+        setCustomerLoyalty(data.loyalty);
+      }
     } catch (err) {
       console.error('Error loading customer purchases:', err);
     }
   }, []);
 
-  const selectCustomer = useCallback((c: Customer) => {
-    setSelectedCustomer(c);
-    setCartItems([]);
-    setTransactionSuccess(false);
-    setErrorMsg(null);
-    loadCustomerPurchases(c.id);
-  }, [loadCustomerPurchases]);
+  // Load latest consultation recommendations for this customer
+  const loadCustomerRecommendations = useCallback(async (customerId: string, availableProducts: Product[]) => {
+    try {
+      let recos: RecommendedItem[] = [];
+      try {
+        const snap = await getDocs(
+          query(collection(db, 'consultations'), where('customerId', '==', customerId), orderBy('createdAt', 'desc'), limit(1))
+        );
+        if (!snap.empty) {
+          recos = snap.docs[0].data().recommendedProducts || [];
+        }
+      } catch {
+        const snap = await getDocs(
+          query(collection(db, 'consultations'), where('customerId', '==', customerId), limit(5))
+        );
+        if (!snap.empty) {
+          const sorted = snap.docs.sort((a, b) => {
+            const tA = a.data().createdAt?.toMillis?.() ?? 0;
+            const tB = b.data().createdAt?.toMillis?.() ?? 0;
+            return tB - tA;
+          });
+          recos = sorted[0].data().recommendedProducts || [];
+        }
+      }
 
-  // Load Recent Customers and Products
+      // Attach prices from available products
+      const enriched = recos.map((r) => {
+        const prod = availableProducts.find(
+          (p) => p.id === r.productId || (r.productName && p.name.toLowerCase() === r.productName.toLowerCase())
+        );
+        return {
+          productId: prod?.id || r.productId,
+          productName: prod?.name || r.productName || 'Produk Wardah',
+          reason: r.reason || '',
+          price: prod?.defaultPrice || 45000,
+        };
+      });
+
+      setCustomerRecommendations(enriched);
+    } catch (err) {
+      console.error('Failed to load recommendations:', err);
+      setCustomerRecommendations([]);
+    }
+  }, []);
+
+  const selectCustomer = useCallback(
+    (c: Customer, allProds = products) => {
+      setSelectedCustomer(c);
+      setCartItems([]);
+      setTransactionSuccess(false);
+      setErrorMsg(null);
+      setCustomInvoiceNo(`WRD-${Date.now().toString().slice(-6)}`);
+      setCashTendered('');
+      setTransactionNotes('');
+      loadCustomerPurchases(c.id);
+      loadCustomerRecommendations(c.id, allProds);
+    },
+    [loadCustomerPurchases, loadCustomerRecommendations, products]
+  );
+
+  // Load Initial Data: Recent Customers, Active Products, Categories
   useEffect(() => {
     const initData = async () => {
       try {
-        const [custSnap, prodSnap] = await Promise.all([
-          getDocs(query(collection(db, 'customers'), orderBy('updatedAt', 'desc'), limit(8))),
-          getDocs(query(collection(db, 'products'), where('status', '==', 'active'), limit(50))),
+        const [custSnap, prodSnap, catSnap] = await Promise.all([
+          getDocs(query(collection(db, 'customers'), orderBy('updatedAt', 'desc'), limit(10))),
+          getDocs(query(collection(db, 'products'), where('isActive', '==', true))),
+          getDocs(collection(db, 'productCategories')),
         ]);
 
         const custs = custSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Customer));
         setRecentCustomers(custs);
 
-        const prods = prodSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
+        let prods = prodSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
+        // Fallback if products collection does not have isActive: true
+        if (prods.length === 0) {
+          const allProdsSnap = await getDocs(collection(db, 'products'));
+          prods = allProdsSnap.docs
+            .map((d) => ({ id: d.id, ...d.data() } as Product))
+            .filter((p) => p.isActive !== false);
+        }
         setProducts(prods);
+
+        const cats = catSnap.docs.map((d) => ({ id: d.id, ...d.data() } as ProductCategory));
+        setCategories(cats);
+
         if (prods.length > 0) {
           setSelectedProductId(prods[0].id);
         }
@@ -130,7 +254,7 @@ function BaScanAndBarcodeContent() {
         if (paramCustomerId) {
           const directDoc = await getDoc(doc(db, 'customers', paramCustomerId));
           if (directDoc.exists()) {
-            selectCustomer({ id: directDoc.id, ...directDoc.data() } as Customer);
+            selectCustomer({ id: directDoc.id, ...directDoc.data() } as Customer, prods);
           }
         }
       } catch (err) {
@@ -172,15 +296,37 @@ function BaScanAndBarcodeContent() {
     }
   };
 
-  // Add Item to Purchase Cart
-  const handleAddItem = () => {
-    const product = products.find((p) => p.id === selectedProductId);
-    if (!product || itemQty <= 0) return;
+  // Filtered Products for Catalog Search & Category Filter
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      // Category filter
+      if (selectedCategory !== 'all') {
+        const matchesCategory =
+          p.categoryId === selectedCategory ||
+          categories.find((c) => c.id === selectedCategory)?.name.toLowerCase() === p.categoryId?.toLowerCase();
+        if (!matchesCategory) return false;
+      }
+
+      // Keyword search
+      if (productSearch.trim()) {
+        const q = productSearch.toLowerCase().trim();
+        const matchesName = p.name.toLowerCase().includes(q);
+        const matchesSku = p.sku?.toLowerCase().includes(q);
+        return matchesName || matchesSku;
+      }
+
+      return true;
+    });
+  }, [products, selectedCategory, categories, productSearch]);
+
+  // Add Item to Cart (Generic)
+  const addItemToCart = (product: Product, quantity = 1) => {
+    if (!product || quantity <= 0) return;
 
     const existingIdx = cartItems.findIndex((it) => it.productId === product.id);
     if (existingIdx >= 0) {
       const updated = [...cartItems];
-      updated[existingIdx].qty += itemQty;
+      updated[existingIdx].qty += quantity;
       updated[existingIdx].subtotal = updated[existingIdx].qty * updated[existingIdx].unitPrice;
       setCartItems(updated);
     } else {
@@ -189,25 +335,125 @@ function BaScanAndBarcodeContent() {
         {
           productId: product.id,
           productName: product.name,
-          sku: product.sku || '',
-          qty: itemQty,
+          sku: product.sku || 'WRD-SKU',
+          qty: quantity,
           unitPrice: product.defaultPrice,
-          subtotal: itemQty * product.defaultPrice,
+          subtotal: quantity * product.defaultPrice,
         },
       ]);
     }
-    setItemQty(1);
+  };
+
+  // Add Item from Manual Selector Dropdown
+  const handleAddFromDropdown = () => {
+    const product = products.find((p) => p.id === selectedProductId);
+    if (product) {
+      addItemToCart(product, itemQty);
+      setItemQty(1);
+    }
+  };
+
+  // Add Item from Recommendations
+  const handleAddRecommendation = (reco: RecommendedItem) => {
+    const prod = products.find((p) => p.id === reco.productId);
+    if (prod) {
+      addItemToCart(prod, 1);
+    } else {
+      // Add custom reco item
+      const existingIdx = cartItems.findIndex((it) => it.productId === reco.productId);
+      if (existingIdx >= 0) {
+        const updated = [...cartItems];
+        updated[existingIdx].qty += 1;
+        updated[existingIdx].subtotal = updated[existingIdx].qty * updated[existingIdx].unitPrice;
+        setCartItems(updated);
+      } else {
+        setCartItems((prev) => [
+          ...prev,
+          {
+            productId: reco.productId,
+            productName: reco.productName || 'Produk Wardah',
+            sku: 'WRD-REC',
+            qty: 1,
+            unitPrice: reco.price || 45000,
+            subtotal: reco.price || 45000,
+          },
+        ]);
+      }
+    }
+  };
+
+  // Add ALL Recommendations in 1-Click
+  const handleAddAllRecommendations = () => {
+    customerRecommendations.forEach((reco) => {
+      handleAddRecommendation(reco);
+    });
+  };
+
+  // Adjust item quantity in cart
+  const handleUpdateItemQty = (index: number, newQty: number) => {
+    if (newQty <= 0) {
+      handleRemoveItem(index);
+      return;
+    }
+    const updated = [...cartItems];
+    updated[index].qty = newQty;
+    updated[index].subtotal = newQty * updated[index].unitPrice;
+    setCartItems(updated);
+  };
+
+  // Adjust item unit price in cart (discounts / promos)
+  const handleUpdateItemPrice = (index: number, newPrice: number) => {
+    const updated = [...cartItems];
+    updated[index].unitPrice = Math.max(0, newPrice);
+    updated[index].subtotal = updated[index].qty * updated[index].unitPrice;
+    updated[index].isCustomPrice = true;
+    setCartItems(updated);
   };
 
   const handleRemoveItem = (index: number) => {
     setCartItems((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  const totalAmount = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
+  const handleClearCart = () => {
+    setCartItems([]);
+  };
 
-  // Submit Purchase
+  // Financial Calculations
+  const totalAmount = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
+  const totalQty = cartItems.reduce((sum, item) => sum + item.qty, 0);
+  const pointsEarned = Math.floor(totalAmount / 10000);
+  const cashChange =
+    paymentMethod === 'cash' && typeof cashTendered === 'number'
+      ? Math.max(0, cashTendered - totalAmount)
+      : 0;
+
+  // Separate Today's purchases from past purchases
+  const isSameDay = (dateStr: string, targetDate = new Date()) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    return (
+      d.getDate() === targetDate.getDate() &&
+      d.getMonth() === targetDate.getMonth() &&
+      d.getFullYear() === targetDate.getFullYear()
+    );
+  };
+
+  const todayPurchases = useMemo(() => {
+    return customerPurchases.filter((p) => isSameDay(p.purchasedAt));
+  }, [customerPurchases]);
+
+  const pastPurchases = useMemo(() => {
+    return customerPurchases.filter((p) => !isSameDay(p.purchasedAt));
+  }, [customerPurchases]);
+
+  // Submit Purchase Transaction
   const handleSubmitPurchase = async () => {
     if (!selectedCustomer || cartItems.length === 0) return;
+
+    if (paymentMethod === 'cash' && typeof cashTendered === 'number' && cashTendered < totalAmount) {
+      setErrorMsg(`Uang tunai yang diterima (Rp ${cashTendered.toLocaleString('id-ID')}) kurang dari total belanja.`);
+      return;
+    }
 
     setIsSubmittingPurchase(true);
     setErrorMsg(null);
@@ -215,6 +461,8 @@ function BaScanAndBarcodeContent() {
     try {
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) throw new Error('Sesi login telah berakhir');
+
+      const invNo = customInvoiceNo.trim() || `WRD-${Date.now().toString().slice(-6)}`;
 
       const res = await fetch('/api/purchases', {
         method: 'POST',
@@ -225,8 +473,12 @@ function BaScanAndBarcodeContent() {
         body: JSON.stringify({
           customerId: selectedCustomer.id,
           storeId: user?.storeId || undefined,
-          invoiceNo: `WRD-${Date.now().toString().slice(-6)}`,
+          invoiceNo: invNo,
           purchasedAt: new Date().toISOString(),
+          paymentMethod,
+          notes: transactionNotes.trim() || undefined,
+          cashReceived: paymentMethod === 'cash' && typeof cashTendered === 'number' ? cashTendered : undefined,
+          cashChange: paymentMethod === 'cash' ? cashChange : undefined,
           items: cartItems,
         }),
       });
@@ -235,14 +487,46 @@ function BaScanAndBarcodeContent() {
       if (!res.ok) throw new Error(data.error || 'Gagal menyimpan transaksi');
 
       setTransactionSuccess(true);
+
+      // Create snapshot object for receipt modal
+      const savedPurchaseSnapshot: Purchase = {
+        id: data.purchaseId || `P-${Date.now()}`,
+        customerId: selectedCustomer.id,
+        customerNameSnapshot: selectedCustomer.fullName,
+        customerPhoneSnapshot: selectedCustomer.phone,
+        storeId: user?.storeId || '',
+        storeNameSnapshot: 'Counter Resmi Wardah',
+        regionId: 'dki_jakarta',
+        baId: user?.uid || '',
+        baNameSnapshot: user?.displayName || 'Beauty Advisor Wardah',
+        invoiceNo: invNo,
+        purchasedAt: new Date().toISOString(),
+        totalAmount,
+        status: 'valid',
+        paymentMethod,
+        notes: transactionNotes.trim() || undefined,
+        cashReceived: paymentMethod === 'cash' && typeof cashTendered === 'number' ? cashTendered : undefined,
+        cashChange: paymentMethod === 'cash' ? cashChange : undefined,
+        items: [...cartItems],
+        createdAt: new Date().toISOString(),
+      };
+
+      // Open receipt modal
+      setSelectedReceipt(savedPurchaseSnapshot);
+      setReceiptModalOpen(true);
+
+      // Reset cart and form
       setCartItems([]);
+      setCustomInvoiceNo(`WRD-${Date.now().toString().slice(-6)}`);
+      setCashTendered('');
+      setTransactionNotes('');
 
       // Update selected customer state immediately
       if (data.customer) {
         setSelectedCustomer((prev) => (prev ? { ...prev, ...data.customer } : prev));
       }
 
-      // Update recent customers in state to reflect purchase count and total spent
+      // Update recent customers in state
       setRecentCustomers((prev) =>
         prev.map((c) =>
           c.id === selectedCustomer.id
@@ -263,6 +547,67 @@ function BaScanAndBarcodeContent() {
     } finally {
       setIsSubmittingPurchase(false);
     }
+  };
+
+  // Void Purchase Handler
+  const handleOpenVoidModal = (purchase: Purchase) => {
+    setPurchaseToVoid(purchase);
+    setVoidReasonText('Kesalahan input produk oleh BA');
+    setVoidModalOpen(true);
+  };
+
+  const handleConfirmVoid = async () => {
+    if (!purchaseToVoid || !voidReasonText.trim()) return;
+
+    setIsVoiding(true);
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/purchases/void', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          purchaseId: purchaseToVoid.id,
+          reason: voidReasonText.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal membatalkan transaksi');
+
+      setVoidModalOpen(false);
+      setPurchaseToVoid(null);
+      if (selectedCustomer) {
+        await loadCustomerPurchases(selectedCustomer.id);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal membatalkan transaksi';
+      alert(message);
+    } finally {
+      setIsVoiding(false);
+    }
+  };
+
+  // WhatsApp Share URL Generator
+  const generateWhatsAppShareUrl = (purchase: Purchase, cust = selectedCustomer) => {
+    if (!cust) return '#';
+    let phone = cust.phone.replace(/[^0-9]/g, '');
+    if (phone.startsWith('0')) {
+      phone = '62' + phone.slice(1);
+    }
+
+    const itemsSummary = purchase.items
+      ?.map((it, idx) => `${idx + 1}. *${it.productName}* (${it.qty}x) = ${formatIDR(it.subtotal)}`)
+      .join('\n');
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://wardahbeauty.com';
+    const passportLink = `${origin}/passport/purchases?c=${cust.id}&scanned=true`;
+
+    const text = `Halo Kak *${cust.fullName}*! ✨\n\nTerima kasih telah berkunjung dan berbelanja produk Wardah di counter resmi kami hari ini.\n\nBerikut rincian struk belanja Kakak:\n📄 *No. Struk*: #${purchase.invoiceNo}\n📅 *Waktu*: ${formatDateTime(purchase.purchasedAt)}\n\n🛍️ *Daftar Produk yang Dibeli*:\n${itemsSummary}\n\n💰 *Total Belanja*: *${formatIDR(purchase.totalAmount)}*\n💳 *Metode Pembayaran*: ${purchase.paymentMethod?.toUpperCase() || 'QRIS'}\n✨ *Poin Wardah Diperoleh*: +${Math.floor(purchase.totalAmount / 10000)} Poin Reward\n\n📱 *Beauty Passport Digital*:\nKakak bisa melihat riwayat lengkap dan menukarkan poin reward di link berikut:\n${passportLink}\n\n_Your Beauty Journey Our Priority 💙_\n*Wardah Beauty Advisor*`;
+
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
 
   // Camera Scanner Functions (Alternative Mode)
@@ -287,9 +632,7 @@ function BaScanAndBarcodeContent() {
       let customerId = '';
       if (codeData.includes('/p/')) {
         const token = codeData.split('/p/')[1].split('?')[0];
-        const snap = await getDocs(
-          query(collection(db, 'customers'), where('qrTokenId', '==', token), limit(1))
-        );
+        const snap = await getDocs(query(collection(db, 'customers'), where('qrTokenId', '==', token), limit(1)));
         if (!snap.empty) {
           customerId = snap.docs[0].id;
         }
@@ -374,7 +717,7 @@ function BaScanAndBarcodeContent() {
 
       {/* Header */}
       <div className="bg-gradient-to-r from-[#277A73] to-[#1E6560] px-6 pt-10 pb-8 text-white shadow-md">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
+        <div className="flex items-center justify-between max-w-5xl mx-auto">
           <div className="flex items-center gap-3">
             <Link href="/ba" className="p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors">
               <ArrowLeft className="w-5 h-5" />
@@ -383,11 +726,11 @@ function BaScanAndBarcodeContent() {
               <h1 className="text-xl font-bold flex items-center gap-2">
                 <span>Kasir & Barcode Riwayat</span>
                 <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-white/20">
-                  Wardah
+                  Wardah Official
                 </span>
               </h1>
               <p className="text-white/80 text-xs mt-0.5">
-                Pilih customer, update produk yang dibeli, dan tampilkan barcode untuk di-scan oleh customer
+                Update produk apa saja yang dibeli customer hari ini & tampilkan barcode riwayat belanja untuk di-scan customer
               </p>
             </div>
           </div>
@@ -414,15 +757,17 @@ function BaScanAndBarcodeContent() {
         </div>
       </div>
 
-      <div className="px-5 -mt-4 max-w-4xl mx-auto space-y-6">
+      <div className="px-5 -mt-4 max-w-5xl mx-auto space-y-6">
         {/* Error Alert */}
         {errorMsg && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between shadow-xs">
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between shadow-xs animate-in">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600" />
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{errorMsg}</span>
             </div>
-            <button onClick={() => setErrorMsg(null)} className="font-bold text-rose-500">✕</button>
+            <button onClick={() => setErrorMsg(null)} className="font-bold text-rose-500 hover:text-rose-700">
+              ✕
+            </button>
           </div>
         )}
 
@@ -431,12 +776,12 @@ function BaScanAndBarcodeContent() {
         {/* ============================================================== */}
         {activeTab === 'generate' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Column: Search & Customer Selection (7 cols) */}
+            {/* Left Column: Search & Customer Selection + Form Update Belanja Hari Ini (7 cols) */}
             <div className="lg:col-span-7 space-y-5">
-              {/* Search Bar */}
+              {/* Customer Search Bar */}
               <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3">
                 <label className="text-xs font-bold text-gray-700 block">
-                  Cari Pelanggan (Nama / Nomor HP / Member ID)
+                  1. Pilih Pelanggan (Nama / Nomor HP / Member ID):
                 </label>
                 <form onSubmit={handleSearch} className="flex gap-2">
                   <div className="relative flex-1">
@@ -445,7 +790,7 @@ function BaScanAndBarcodeContent() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Ketik nomor HP (08...) atau nama..."
+                      placeholder="Ketik nomor HP (08...) atau nama customer..."
                       className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#277A73] focus:ring-1 focus:ring-[#277A73]"
                     />
                   </div>
@@ -477,9 +822,11 @@ function BaScanAndBarcodeContent() {
                         >
                           <div>
                             <p className="text-xs font-bold text-gray-900">{cust.fullName}</p>
-                            <p className="text-[10px] text-gray-500">{cust.phone} • ID: {cust.memberNo}</p>
+                            <p className="text-[10px] text-gray-500">
+                              {cust.phone} • ID: {cust.memberNo}
+                            </p>
                           </div>
-                          <span className="text-[11px] text-[#277A73] font-bold">Pilih →</span>
+                          <span className="text-[11px] text-[#277A73] font-bold">Pilih Pelanggan →</span>
                         </button>
                       ))}
                     </div>
@@ -499,10 +846,12 @@ function BaScanAndBarcodeContent() {
                       <button
                         key={cust.id}
                         onClick={() => selectCustomer(cust)}
-                        className="p-3 rounded-2xl border border-gray-100 hover:border-[#277A73] text-left hover:bg-[#E8F6F4]/30 transition-all flex items-center justify-between"
+                        className="p-3 rounded-2xl border border-gray-100 hover:border-[#277A73] text-left hover:bg-[#E8F6F4]/30 transition-all flex items-center justify-between group"
                       >
                         <div className="min-w-0 pr-2">
-                          <p className="text-xs font-bold text-gray-900 truncate">{cust.fullName}</p>
+                          <p className="text-xs font-bold text-gray-900 truncate group-hover:text-[#277A73] transition-colors">
+                            {cust.fullName}
+                          </p>
                           <p className="text-[10px] text-gray-500 font-mono mt-0.5">{cust.phone}</p>
                         </div>
                         <span className="text-xs text-[#277A73]">→</span>
@@ -512,117 +861,516 @@ function BaScanAndBarcodeContent() {
                 </div>
               )}
 
-              {/* Form Update Apa Saja yang Dibeli Customer */}
+              {/* Form Update Apa Saja yang Dibeli Customer Hari Ini */}
               {selectedCustomer && (
-                <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                    <div>
-                      <span className="text-[10px] font-bold text-[#277A73] bg-[#E8F6F4] px-2 py-0.5 rounded-full">
-                        Pelanggan Aktif
-                      </span>
-                      <h3 className="text-base font-bold text-gray-900 mt-1">{selectedCustomer.fullName}</h3>
-                      <p className="text-xs text-gray-500 font-mono">{selectedCustomer.phone} • ID: {selectedCustomer.memberNo}</p>
+                <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-5 animate-in fade-in">
+                  {/* Customer Banner */}
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-2xl bg-[#E8F6F4] text-[#277A73] font-bold flex items-center justify-center text-base shadow-xs">
+                        {selectedCustomer.fullName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-gray-900">{selectedCustomer.fullName}</h3>
+                          <span className="text-[10px] font-bold text-[#277A73] bg-[#E8F6F4] px-2 py-0.5 rounded-full capitalize">
+                            {customerLoyalty?.tier || 'Bronze'} Member
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 font-mono">
+                          {selectedCustomer.phone} • ID: {selectedCustomer.memberNo}
+                        </p>
+                      </div>
                     </div>
                     <Link
                       href={`/ba/customers/${selectedCustomer.id}`}
-                      className="text-xs text-[#277A73] font-bold hover:underline flex items-center gap-1"
+                      className="text-xs text-[#277A73] font-bold hover:underline flex items-center gap-1 shrink-0"
                     >
                       <span>Profil Lengkap</span>
                       <ExternalLink className="w-3.5 h-3.5" />
                     </Link>
                   </div>
 
-                  {/* Add Product Items to Purchase */}
-                  <div className="space-y-3">
-                    <label className="text-xs font-bold text-gray-700 block">
-                      Update Apa Saja yang Dibeli Customer Hari Ini:
-                    </label>
-
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <select
-                        value={selectedProductId}
-                        onChange={(e) => setSelectedProductId(e.target.value)}
-                        className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-[#277A73] bg-white"
-                      >
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} — {formatIDR(p.defaultPrice)}
-                          </option>
-                        ))}
-                      </select>
-
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min={1}
-                          value={itemQty}
-                          onChange={(e) => setItemQty(Math.max(1, Number(e.target.value)))}
-                          className="w-16 px-2 py-2 text-xs border border-gray-200 rounded-xl text-center font-bold"
-                          title="Jumlah item"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddItem}
-                          className="px-3.5 py-2 bg-[#277A73] text-white font-bold text-xs rounded-xl hover:bg-[#1E6560] transition-colors flex items-center gap-1 shrink-0"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Tambah</span>
-                        </button>
+                  {/* Section: Transaksi yang Sudah Dicatat Hari Ini */}
+                  {todayPurchases.length > 0 && (
+                    <div className="p-4 rounded-2xl bg-[#F0FAF9] border border-[#277A73]/20 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-[#277A73]" />
+                          <h4 className="text-xs font-bold text-gray-900">
+                            Transaksi Terdaftar Hari Ini ({todayPurchases.length}):
+                          </h4>
+                        </div>
+                        <span className="text-xs font-black text-[#277A73]">
+                          {formatIDR(todayPurchases.reduce((s, p) => s + (p.status === 'valid' ? p.totalAmount : 0), 0))}
+                        </span>
                       </div>
-                    </div>
 
-                    {/* Cart Items List */}
-                    {cartItems.length > 0 && (
-                      <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 space-y-2 mt-2">
-                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                          Daftar Pembelian Baru:
-                        </p>
-                        {cartItems.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-gray-100 last:border-0">
+                      <div className="space-y-2">
+                        {todayPurchases.map((tp) => (
+                          <div
+                            key={tp.id}
+                            className={`p-3 bg-white rounded-xl border text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-2xs ${
+                              tp.status === 'void' ? 'border-red-200 bg-red-50/40 opacity-70' : 'border-gray-100'
+                            }`}
+                          >
                             <div>
-                              <p className="font-semibold text-gray-900">{item.productName}</p>
-                              <p className="text-[10px] text-gray-500">{item.qty} × {formatIDR(item.unitPrice)}</p>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-gray-800">#{tp.invoiceNo}</span>
+                                <span className="text-[10px] text-gray-400">({formatDateTime(tp.purchasedAt)})</span>
+                                <span
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                                    tp.status === 'void' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'
+                                  }`}
+                                >
+                                  {tp.status === 'void' ? 'Void' : 'Valid'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-gray-600 mt-1">
+                                {tp.items?.map((it) => `${it.qty}x ${it.productName}`).join(', ')}
+                              </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-[#277A73]">{formatIDR(item.subtotal)}</span>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="font-bold text-[#277A73]">{formatIDR(tp.totalAmount)}</span>
                               <button
                                 type="button"
-                                onClick={() => handleRemoveItem(idx)}
-                                className="text-gray-400 hover:text-red-500 p-1"
+                                onClick={() => {
+                                  setSelectedReceipt(tp);
+                                  setReceiptModalOpen(true);
+                                }}
+                                className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-[11px] transition-colors"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                Struk
                               </button>
+                              <a
+                                href={generateWhatsAppShareUrl(tp)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 rounded-lg transition-colors"
+                                title="Kirim Struk ke WhatsApp"
+                              >
+                                <Share2 className="w-3.5 h-3.5" />
+                              </a>
+                              {tp.status === 'valid' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenVoidModal(tp)}
+                                  className="text-[10px] text-rose-500 hover:text-rose-700 font-bold px-1"
+                                  title="Batalkan (Void) transaksi ini"
+                                >
+                                  Void
+                                </button>
+                              )}
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
 
-                        <div className="pt-2 flex justify-between items-center font-bold text-sm text-gray-900 border-t border-gray-200">
-                          <span>Total Belanja:</span>
-                          <span className="text-[#277A73]">{formatIDR(totalAmount)}</span>
+                  {/* Section: Rekomendasi Hasil Konsultasi Kulit Pelanggan */}
+                  {customerRecommendations.length > 0 && (
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-[#E8F6F4]/50 border border-amber-200/60 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          <div>
+                            <h4 className="text-xs font-bold text-gray-900">
+                              Rekomendasi dari Konsultasi Kulit:
+                            </h4>
+                            <p className="text-[10px] text-gray-500">
+                              Produk perawatan yang direkomendasikan untuk concern kulit pelanggan
+                            </p>
+                          </div>
                         </div>
-
                         <button
                           type="button"
-                          onClick={handleSubmitPurchase}
-                          disabled={isSubmittingPurchase}
-                          className="w-full mt-2 py-2.5 bg-[#277A73] hover:bg-[#1E6560] text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-2"
+                          onClick={handleAddAllRecommendations}
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] rounded-xl transition-colors shadow-2xs shrink-0 flex items-center gap-1"
                         >
-                          {isSubmittingPurchase ? (
-                            <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                          ) : (
-                            <>
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>Simpan Transaksi & Update Barcode</span>
-                            </>
-                          )}
+                          <Plus className="w-3 h-3" />
+                          <span>+ Tambah Semua ({customerRecommendations.length})</span>
                         </button>
                       </div>
-                    )}
 
-                    {transactionSuccess && (
-                      <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 animate-in">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>Transaksi berhasil disimpan! Barcode di sebelah kanan telah diperbarui.</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {customerRecommendations.map((reco, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 bg-white rounded-xl border border-gray-200/80 flex items-center justify-between text-xs hover:border-[#277A73] transition-all"
+                          >
+                            <div className="min-w-0 pr-2">
+                              <p className="font-bold text-gray-900 truncate">{reco.productName}</p>
+                              {reco.reason && <p className="text-[10px] text-gray-400 truncate">{reco.reason}</p>}
+                              <p className="text-[11px] font-semibold text-[#277A73] mt-0.5">
+                                {formatIDR(reco.price || 45000)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleAddRecommendation(reco)}
+                              className="px-2.5 py-1 bg-[#277A73]/10 text-[#277A73] hover:bg-[#277A73] hover:text-white font-bold rounded-lg text-[11px] transition-colors shrink-0"
+                            >
+                              + Tambah
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Section: Form Update Apa Saja yang Dibeli Customer Hari Ini */}
+                  <div className="space-y-4 pt-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                        <ShoppingBag className="w-4 h-4 text-[#277A73]" />
+                        <span>Update Apa Saja yang Dibeli Customer Hari Ini:</span>
+                      </label>
+                      <span className="text-[11px] text-gray-400 font-medium">
+                        Total {products.length} Katalog Produk
+                      </span>
+                    </div>
+
+                    {/* Product Search & Category Filter Pills */}
+                    <div className="space-y-2.5">
+                      <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          placeholder="Cari produk Wardah (nama atau SKU, misal: Sunscreen, Hydra Rose, Lip)..."
+                          className="w-full pl-10 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#277A73] focus:bg-white transition-all"
+                        />
+                        {productSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setProductSearch('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold text-xs"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Category Pills */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCategory('all')}
+                          className={`px-3 py-1.5 rounded-full font-bold text-[11px] whitespace-nowrap transition-all ${
+                            selectedCategory === 'all'
+                              ? 'bg-[#277A73] text-white shadow-2xs'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          Semua Produk ({products.length})
+                        </button>
+                        {categories.map((cat) => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setSelectedCategory(cat.id)}
+                            className={`px-3 py-1.5 rounded-full font-bold text-[11px] whitespace-nowrap transition-all ${
+                              selectedCategory === cat.id
+                                ? 'bg-[#277A73] text-white shadow-2xs'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Quick-Pick Product Cards Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                        {filteredProducts.slice(0, 10).map((prod) => (
+                          <div
+                            key={prod.id}
+                            className="p-2.5 rounded-xl border border-gray-200/80 hover:border-[#277A73] bg-white flex items-center justify-between text-xs transition-all group"
+                          >
+                            <div className="min-w-0 pr-2">
+                              <p className="font-bold text-gray-900 truncate group-hover:text-[#277A73] transition-colors">
+                                {prod.name}
+                              </p>
+                              <p className="text-[10px] text-gray-400 font-mono">
+                                {prod.sku || 'WRD'} • {formatIDR(prod.defaultPrice)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => addItemToCart(prod, 1)}
+                              className="px-2.5 py-1.5 bg-[#277A73] text-white font-bold rounded-lg text-[11px] hover:bg-[#1E6560] transition-colors shrink-0 flex items-center gap-1 shadow-2xs"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Tambah</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Fallback Manual Dropdown Selector */}
+                      <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
+                        <select
+                          value={selectedProductId}
+                          onChange={(e) => setSelectedProductId(e.target.value)}
+                          className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:border-[#277A73] bg-white"
+                        >
+                          {products.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} — {formatIDR(p.defaultPrice)}
+                            </option>
+                          ))}
+                        </select>
+
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={1}
+                            value={itemQty}
+                            onChange={(e) => setItemQty(Math.max(1, Number(e.target.value)))}
+                            className="w-16 px-2 py-2 text-xs border border-gray-200 rounded-xl text-center font-bold"
+                            title="Jumlah item"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddFromDropdown}
+                            className="px-3.5 py-2 bg-[#277A73] text-white font-bold text-xs rounded-xl hover:bg-[#1E6560] transition-colors flex items-center gap-1 shrink-0 shadow-2xs"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Tambah Item</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Cart Items List ("Daftar Belanja Baru Hari Ini") */}
+                    {cartItems.length > 0 && (
+                      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-3 mt-3 animate-in fade-in">
+                        <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                          <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>Daftar Pembelian Baru:</span>
+                            <span className="bg-[#277A73] text-white px-2 py-0.5 rounded-full text-[10px]">
+                              {totalQty} item
+                            </span>
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleClearCart}
+                            className="text-[11px] text-rose-500 hover:text-rose-700 font-bold"
+                          >
+                            Kosongkan Keranjang
+                          </button>
+                        </div>
+
+                        {/* Items in Cart Table */}
+                        <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                          {cartItems.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="p-3 bg-white rounded-xl border border-gray-200/80 flex items-center justify-between gap-3 text-xs shadow-2xs"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-gray-900 leading-tight">{item.productName}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] text-gray-400 font-mono">{item.sku}</span>
+                                  <span className="text-[10px] text-gray-500">
+                                    @ {formatIDR(item.unitPrice)}
+                                  </span>
+                                  {item.isCustomPrice && (
+                                    <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded">
+                                      Harga Khusus
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Quantity Stepper */}
+                              <div className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-xl border border-gray-200 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateItemQty(idx, item.qty - 1)}
+                                  className="w-6 h-6 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100 font-bold text-xs"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={item.qty}
+                                  onChange={(e) => handleUpdateItemQty(idx, Math.max(1, Number(e.target.value)))}
+                                  className="w-10 text-center font-bold text-xs bg-transparent focus:outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateItemQty(idx, item.qty + 1)}
+                                  className="w-6 h-6 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100 font-bold text-xs"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+
+                              {/* Subtotal & Delete */}
+                              <div className="text-right shrink-0 flex items-center gap-2">
+                                <span className="font-black text-[#277A73]">{formatIDR(item.subtotal)}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveItem(idx)}
+                                  className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+                                  title="Hapus produk ini"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Payment Method & POS Details */}
+                        <div className="pt-3 border-t border-gray-200 space-y-3">
+                          <div>
+                            <label className="text-[11px] font-bold text-gray-700 block mb-1.5">
+                              Metode Pembayaran Kasir:
+                            </label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                              {[
+                                { id: 'qris', label: 'QRIS', icon: Smartphone },
+                                { id: 'cash', label: 'Tunai', icon: Banknote },
+                                { id: 'debit', label: 'Kartu Debit', icon: CreditCard },
+                                { id: 'transfer', label: 'Transfer', icon: Building },
+                              ].map((m) => {
+                                const Icon = m.icon;
+                                const isSelected = paymentMethod === m.id;
+                                return (
+                                  <button
+                                    key={m.id}
+                                    type="button"
+                                    onClick={() => setPaymentMethod(m.id as any)}
+                                    className={`py-2 px-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                                      isSelected
+                                        ? 'bg-[#277A73] text-white border-[#277A73] shadow-xs'
+                                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <Icon className="w-3.5 h-3.5" />
+                                    <span>{m.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Tunai / Cash Tender Calculator */}
+                          {paymentMethod === 'cash' && (
+                            <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-2 animate-in fade-in">
+                              <div className="flex items-center justify-between text-xs">
+                                <label className="font-bold text-gray-700">Uang Diterima:</label>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-400 font-bold">Rp</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    placeholder={totalAmount.toString()}
+                                    value={cashTendered}
+                                    onChange={(e) => setCashTendered(e.target.value ? Number(e.target.value) : '')}
+                                    className="w-32 px-2.5 py-1 text-right font-black border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-[#277A73]"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Cash Presets */}
+                              <div className="flex flex-wrap gap-1 text-[10px]">
+                                {[
+                                  { label: 'Uang Pas', val: totalAmount },
+                                  { label: '50rb', val: 50000 },
+                                  { label: '100rb', val: 100000 },
+                                  { label: '200rb', val: 200000 },
+                                  { label: '500rb', val: 500000 },
+                                ].map((p, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setCashTendered(p.val)}
+                                    className="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-md transition-colors"
+                                  >
+                                    {p.label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              <div className="flex justify-between items-center text-xs font-bold pt-1.5 border-t border-gray-100">
+                                <span className="text-gray-600">Kembalian:</span>
+                                <span className={cashChange >= 0 ? 'text-emerald-600 font-black' : 'text-rose-500'}>
+                                  {formatIDR(cashChange)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Optional Invoice & Notes */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                                No. Invoice / Struk:
+                              </label>
+                              <input
+                                type="text"
+                                value={customInvoiceNo}
+                                onChange={(e) => setCustomInvoiceNo(e.target.value)}
+                                className="w-full px-3 py-1.5 border border-gray-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#277A73]"
+                                placeholder="WRD-XXXXXX"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                                Catatan Kasir (Opsional):
+                              </label>
+                              <input
+                                type="text"
+                                value={transactionNotes}
+                                onChange={(e) => setTransactionNotes(e.target.value)}
+                                className="w-full px-3 py-1.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#277A73]"
+                                placeholder="Cth: Promo bundling, gift sample..."
+                              />
+                            </div>
+                          </div>
+
+                          {/* Total Belanja & Points Preview */}
+                          <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-1">
+                            <div className="flex justify-between items-center font-bold text-base text-gray-900">
+                              <span>Total Belanja:</span>
+                              <span className="text-lg font-black text-[#277A73]">{formatIDR(totalAmount)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[11px] text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-amber-500" />
+                                <span>Poin Reward Diperoleh:</span>
+                              </span>
+                              <span className="font-bold text-amber-600">+{pointsEarned} Poin Wardah</span>
+                            </div>
+                          </div>
+
+                          {/* Submit Button */}
+                          <button
+                            type="button"
+                            onClick={handleSubmitPurchase}
+                            disabled={isSubmittingPurchase}
+                            className="w-full py-3.5 bg-[#277A73] hover:bg-[#1E6560] text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-[#277A73]/25 flex items-center justify-center gap-2 active:scale-98"
+                          >
+                            {isSubmittingPurchase ? (
+                              <>
+                                <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                                <span>Menyimpan Transaksi Kasir...</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Simpan Transaksi & Update Barcode Hari Ini</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -632,68 +1380,97 @@ function BaScanAndBarcodeContent() {
 
             {/* Right Column: High-Contrast Barcode for Customer to Scan (5 cols) */}
             <div className="lg:col-span-5 space-y-4">
-              <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-center space-y-4">
+              <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm text-center space-y-4 sticky top-6">
                 <div className="flex items-center justify-center gap-2">
                   <QrCode className="w-5 h-5 text-[#277A73]" />
-                  <h3 className="font-bold text-sm text-gray-900">
-                    Barcode Riwayat Customer
-                  </h3>
+                  <h3 className="font-bold text-sm text-gray-900">Barcode Riwayat Customer</h3>
                 </div>
 
                 {selectedCustomer ? (
                   <div className="space-y-4 animate-in fade-in">
                     <p className="text-xs text-gray-500">
-                      Tunjukkan barcode ini kepada <strong>{selectedCustomer.fullName}</strong> untuk di-scan melalui aplikasi Beauty Passport mereka.
+                      Tunjukkan barcode ini kepada <strong>{selectedCustomer.fullName}</strong> untuk di-scan melalui
+                      aplikasi Beauty Passport mereka.
                     </p>
 
                     {/* QR Code Container */}
-                    <div className="p-4 bg-white rounded-2xl border-2 border-[#277A73]/20 shadow-md inline-block mx-auto">
-                      <QRCode
-                        value={barcodeCustomerUrl}
-                        size={210}
-                        level="H"
-                        fgColor="#277A73"
-                      />
+                    <div className="p-4 bg-white rounded-2xl border-2 border-[#277A73]/20 shadow-md inline-block mx-auto transition-transform hover:scale-102">
+                      <QRCode value={barcodeCustomerUrl} size={210} level="H" fgColor="#277A73" />
                     </div>
 
                     {/* Stats summary of current customer */}
-                    <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl text-xs border border-gray-100">
-                      <span className="text-gray-500 font-medium">Total Transaksi:</span>
-                      <span className="font-bold text-[#277A73]">
-                        {selectedCustomer.purchaseCount || 0}x ({formatIDR(selectedCustomer.totalSpent || 0)})
-                      </span>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2.5 bg-gray-50 rounded-xl text-left border border-gray-100">
+                        <span className="text-[10px] text-gray-400 font-medium block">Total Transaksi</span>
+                        <span className="font-bold text-[#277A73]">{selectedCustomer.purchaseCount || 0}x</span>
+                      </div>
+                      <div className="p-2.5 bg-gray-50 rounded-xl text-left border border-gray-100">
+                        <span className="text-[10px] text-gray-400 font-medium block">Total Belanja</span>
+                        <span className="font-bold text-[#277A73]">{formatIDR(selectedCustomer.totalSpent || 0)}</span>
+                      </div>
                     </div>
 
                     <div className="p-3 bg-[#E8F6F4] rounded-2xl text-[11px] text-[#277A73] font-medium leading-relaxed space-y-1">
                       <p>
-                        📱 <strong>Customer cukup buka menu &apos;Passport&apos;</strong> di HP mereka dan scan barcode ini untuk melihat riwayat belanja terbarunya.
+                        📱 <strong>Customer cukup buka menu &apos;Passport&apos;</strong> di HP mereka dan scan barcode
+                        ini untuk melihat riwayat belanja terbarunya secara langsung.
                       </p>
                       <a
                         href={barcodeCustomerUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-bold underline text-[10px] mt-1"
+                        className="inline-flex items-center gap-1 font-bold underline text-[10px] mt-1 text-[#277A73] hover:text-[#1E6560]"
                       >
                         <ExternalLink className="w-3 h-3" />
-                        <span>Buka Riwayat Pelanggan (Preview Tampilan Customer)</span>
+                        <span>Buka Tampilan Pelanggan (Preview Riwayat Customer)</span>
                       </a>
                     </div>
 
-                    {/* Customer Quick Purchases Summary */}
+                    {/* Past Purchases Summary */}
                     <div className="text-left border-t border-gray-100 pt-3 space-y-2">
-                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                        Riwayat Transaksi Sebelumnya:
-                      </p>
-                      {customerPurchases.length === 0 ? (
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                          Riwayat Transaksi Sebelumnya:
+                        </p>
+                        <span className="text-[10px] text-gray-400 font-mono">
+                          {pastPurchases.length} transaksi
+                        </span>
+                      </div>
+
+                      {pastPurchases.length === 0 ? (
                         <p className="text-xs text-gray-400 italic">Belum ada transaksi sebelumnya.</p>
                       ) : (
-                        customerPurchases.slice(0, 3).map((p) => (
-                          <div key={p.id} className="flex justify-between items-center text-xs py-1 border-b border-gray-50">
+                        pastPurchases.slice(0, 4).map((p) => (
+                          <div
+                            key={p.id}
+                            className="flex justify-between items-center text-xs py-1.5 border-b border-gray-50 last:border-0"
+                          >
                             <div>
-                              <p className="font-semibold text-gray-800">{formatIDR(p.totalAmount)}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-semibold text-gray-800">{formatIDR(p.totalAmount)}</p>
+                                <span
+                                  className={`text-[9px] px-1 rounded ${
+                                    p.status === 'void' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'
+                                  }`}
+                                >
+                                  {p.status === 'void' ? 'Void' : 'Valid'}
+                                </span>
+                              </div>
                               <p className="text-[10px] text-gray-400">{formatDate(p.purchasedAt)}</p>
                             </div>
-                            <span className="text-[10px] font-mono text-gray-400">#{p.invoiceNo || p.id.slice(0, 6)}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-mono text-gray-400">#{p.invoiceNo || p.id.slice(0, 6)}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedReceipt(p);
+                                  setReceiptModalOpen(true);
+                                }}
+                                className="text-[10px] text-[#277A73] font-bold hover:underline"
+                              >
+                                Detail
+                              </button>
+                            </div>
                           </div>
                         ))
                       )}
@@ -704,7 +1481,8 @@ function BaScanAndBarcodeContent() {
                     <span className="text-4xl block mb-2">👈</span>
                     <p className="font-bold text-xs text-gray-700">Pilih Pelanggan Terlebih Dahulu</p>
                     <p className="text-[11px] text-gray-400 leading-relaxed">
-                      Gunakan kotak pencarian atau daftar pelanggan di sebelah kiri untuk menampilkan barcode riwayat belanja mereka.
+                      Gunakan kotak pencarian atau daftar pelanggan di sebelah kiri untuk menampilkan barcode riwayat belanja
+                      mereka.
                     </p>
                   </div>
                 )}
@@ -742,6 +1520,211 @@ function BaScanAndBarcodeContent() {
           </div>
         )}
       </div>
+
+      {/* ============================================================== */}
+      {/* MODAL: STRUK / NOTA DIGITAL TRANSAKSI BELANJA                  */}
+      {/* ============================================================== */}
+      {receiptModalOpen && selectedReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-[#E8F6F4]/50">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-[#277A73]" />
+                <h3 className="font-bold text-sm text-gray-900">Struk Transaksi Digital</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReceiptModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white text-gray-400 hover:text-gray-700 flex items-center justify-center shadow-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Receipt Body (Printable Slip) */}
+            <div className="p-6 overflow-y-auto space-y-4 text-xs font-mono bg-white">
+              {/* Receipt Header */}
+              <div className="text-center space-y-1">
+                <h2 className="text-base font-black text-gray-900 tracking-wide font-sans">WARDAH BEAUTY COUNTER</h2>
+                <p className="text-[10px] text-gray-500">Official Beauty Passport Terminal</p>
+                <p className="text-[10px] text-gray-400">Counter: {selectedReceipt.storeNameSnapshot || 'Counter Wardah'}</p>
+                <div className="border-b border-dashed border-gray-300 my-2" />
+              </div>
+
+              {/* Receipt Meta */}
+              <div className="space-y-1 text-[11px] text-gray-600">
+                <div className="flex justify-between">
+                  <span>No. Struk:</span>
+                  <span className="font-bold text-gray-900">#{selectedReceipt.invoiceNo}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Waktu:</span>
+                  <span>{formatDateTime(selectedReceipt.purchasedAt)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>BA:</span>
+                  <span className="font-bold">{selectedReceipt.baNameSnapshot || 'Beauty Advisor'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Customer:</span>
+                  <span className="font-bold">{selectedReceipt.customerNameSnapshot}</span>
+                </div>
+                <div className="border-b border-dashed border-gray-300 my-2" />
+              </div>
+
+              {/* Items List */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase">
+                  <span>Item</span>
+                  <span>Subtotal</span>
+                </div>
+                {selectedReceipt.items?.map((it, idx) => (
+                  <div key={idx} className="flex justify-between items-start text-xs">
+                    <div className="pr-2">
+                      <p className="font-bold text-gray-900 leading-tight">{it.productName}</p>
+                      <p className="text-[10px] text-gray-500">
+                        {it.qty} × {formatIDR(it.unitPrice)}
+                      </p>
+                    </div>
+                    <span className="font-bold text-gray-900 shrink-0">{formatIDR(it.subtotal)}</span>
+                  </div>
+                ))}
+                <div className="border-b border-dashed border-gray-300 my-2" />
+              </div>
+
+              {/* Totals & Payments */}
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between font-bold text-sm text-gray-900">
+                  <span>Total Belanja:</span>
+                  <span className="text-[#277A73]">{formatIDR(selectedReceipt.totalAmount)}</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-600 capitalize">
+                  <span>Metode Bayar:</span>
+                  <span className="font-bold">{selectedReceipt.paymentMethod?.toUpperCase() || 'QRIS'}</span>
+                </div>
+                {selectedReceipt.cashReceived && (
+                  <>
+                    <div className="flex justify-between text-[11px] text-gray-600">
+                      <span>Uang Diterima:</span>
+                      <span>{formatIDR(selectedReceipt.cashReceived)}</span>
+                    </div>
+                    <div className="flex justify-between text-[11px] text-gray-600">
+                      <span>Kembalian:</span>
+                      <span className="font-bold text-emerald-600">
+                        {formatIDR(selectedReceipt.cashChange || 0)}
+                      </span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between text-[11px] text-amber-700 bg-amber-50 p-2 rounded-lg font-bold">
+                  <span>Poin Reward Bertambah:</span>
+                  <span>+{Math.floor(selectedReceipt.totalAmount / 10000)} Poin</span>
+                </div>
+                {selectedReceipt.notes && (
+                  <div className="text-[10px] text-gray-500 italic mt-1">Catatan: {selectedReceipt.notes}</div>
+                )}
+                {selectedReceipt.status === 'void' && (
+                  <div className="p-2 rounded-lg bg-red-100 text-red-700 font-bold text-center text-xs mt-2">
+                    TRANSAKSI TELAH DIBATALKAN (VOID)
+                    {selectedReceipt.voidReason && <p className="text-[10px] font-normal">Alasan: {selectedReceipt.voidReason}</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Receipt Footer */}
+              <div className="text-center pt-3 border-t border-dashed border-gray-300 space-y-1">
+                <p className="text-[10px] text-gray-500">Terima kasih atas kunjungan Anda!</p>
+                <p className="text-[10px] text-[#277A73] font-bold italic font-sans">
+                  Your Beauty Journey Our Priority 💙
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-2">
+              <a
+                href={generateWhatsAppShareUrl(selectedReceipt)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 px-4 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Kirim via WhatsApp</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="py-2.5 px-4 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Cetak Struk</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setReceiptModalOpen(false)}
+                className="py-2.5 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-xs rounded-xl transition-all"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: KONFIRMASI VOID / BATALKAN TRANSAKSI                     */}
+      {/* ============================================================== */}
+      {voidModalOpen && purchaseToVoid && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 border border-gray-100">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto shadow-inner">
+              <RotateCcw className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="font-bold text-base text-gray-900">Batalkan Transaksi (Void)?</h3>
+              <p className="text-xs text-gray-500">
+                Invoice #{purchaseToVoid.invoiceNo} senilai{' '}
+                <strong className="text-gray-900">{formatIDR(purchaseToVoid.totalAmount)}</strong> akan dibatalkan dan
+                poin customer akan disesuaikan kembali.
+              </p>
+            </div>
+
+            <div className="space-y-1 text-left">
+              <label className="text-xs font-bold text-gray-700 block">Alasan Pembatalan (Void):</label>
+              <textarea
+                value={voidReasonText}
+                onChange={(e) => setVoidReasonText(e.target.value)}
+                placeholder="Masukkan alasan pembatalan..."
+                rows={2}
+                className="w-full p-2.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#277A73]"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setVoidModalOpen(false)}
+                disabled={isVoiding}
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmVoid}
+                disabled={isVoiding || !voidReasonText.trim()}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-rose-600/20 disabled:opacity-50"
+              >
+                {isVoiding ? 'Memproses...' : 'Ya, Batalkan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -25,15 +25,30 @@ export async function GET(request: NextRequest) {
 
       const custData = custDoc.data()!;
 
-      // Ambil transaksi untuk customer tersebut
-      const purchasesSnap = await db
-        .collection('purchases')
-        .where('customerId', '==', targetCustomerId)
-        .orderBy('purchasedAt', 'desc')
-        .limit(50)
-        .get();
+      // Ambil transaksi untuk customer tersebut dengan fallback sorting
+      let purchasesDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+      try {
+        const purchasesSnap = await db
+          .collection('purchases')
+          .where('customerId', '==', targetCustomerId)
+          .orderBy('purchasedAt', 'desc')
+          .limit(50)
+          .get();
+        purchasesDocs = purchasesSnap.docs;
+      } catch {
+        const purchasesSnap = await db
+          .collection('purchases')
+          .where('customerId', '==', targetCustomerId)
+          .limit(100)
+          .get();
+        purchasesDocs = purchasesSnap.docs.sort((a, b) => {
+          const tA = a.data().purchasedAt?.toMillis?.() ?? new Date(a.data().purchasedAt || 0).getTime();
+          const tB = b.data().purchasedAt?.toMillis?.() ?? new Date(b.data().purchasedAt || 0).getTime();
+          return tB - tA;
+        });
+      }
 
-      const purchases = purchasesSnap.docs.map((doc) => ({
+      const purchases = purchasesDocs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         purchasedAt: doc.data().purchasedAt?.toDate?.()?.toISOString() ?? doc.data().purchasedAt,
@@ -87,13 +102,28 @@ export async function GET(request: NextRequest) {
       }
 
       const customerId = custSnap.docs[0].id;
-      const purchasesSnap = await db
-        .collection('purchases')
-        .where('customerId', '==', customerId)
-        .orderBy('purchasedAt', 'desc')
-        .get();
+      let purchasesDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+      try {
+        const purchasesSnap = await db
+          .collection('purchases')
+          .where('customerId', '==', customerId)
+          .orderBy('purchasedAt', 'desc')
+          .get();
+        purchasesDocs = purchasesSnap.docs;
+      } catch {
+        const purchasesSnap = await db
+          .collection('purchases')
+          .where('customerId', '==', customerId)
+          .limit(100)
+          .get();
+        purchasesDocs = purchasesSnap.docs.sort((a, b) => {
+          const tA = a.data().purchasedAt?.toMillis?.() ?? new Date(a.data().purchasedAt || 0).getTime();
+          const tB = b.data().purchasedAt?.toMillis?.() ?? new Date(b.data().purchasedAt || 0).getTime();
+          return tB - tA;
+        });
+      }
 
-      const purchases = purchasesSnap.docs.map((doc) => ({
+      const purchases = purchasesDocs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         purchasedAt: doc.data().purchasedAt?.toDate?.()?.toISOString() ?? doc.data().purchasedAt,
@@ -103,14 +133,29 @@ export async function GET(request: NextRequest) {
     }
 
     if (decodedToken.role === 'ba') {
-      const purchasesSnap = await db
-        .collection('purchases')
-        .where('baId', '==', decodedToken.uid)
-        .orderBy('purchasedAt', 'desc')
-        .limit(100)
-        .get();
+      let purchasesDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+      try {
+        const purchasesSnap = await db
+          .collection('purchases')
+          .where('baId', '==', decodedToken.uid)
+          .orderBy('purchasedAt', 'desc')
+          .limit(100)
+          .get();
+        purchasesDocs = purchasesSnap.docs;
+      } catch {
+        const purchasesSnap = await db
+          .collection('purchases')
+          .where('baId', '==', decodedToken.uid)
+          .limit(150)
+          .get();
+        purchasesDocs = purchasesSnap.docs.sort((a, b) => {
+          const tA = a.data().purchasedAt?.toMillis?.() ?? new Date(a.data().purchasedAt || 0).getTime();
+          const tB = b.data().purchasedAt?.toMillis?.() ?? new Date(b.data().purchasedAt || 0).getTime();
+          return tB - tA;
+        });
+      }
 
-      const purchases = purchasesSnap.docs.map((doc) => ({
+      const purchases = purchasesDocs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         purchasedAt: doc.data().purchasedAt?.toDate?.()?.toISOString() ?? doc.data().purchasedAt,
@@ -120,13 +165,24 @@ export async function GET(request: NextRequest) {
     }
 
     // Admin or other roles: return recent purchases
-    const purchasesSnap = await db
-      .collection('purchases')
-      .orderBy('purchasedAt', 'desc')
-      .limit(200)
-      .get();
+    let purchasesDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+    try {
+      const purchasesSnap = await db
+        .collection('purchases')
+        .orderBy('purchasedAt', 'desc')
+        .limit(200)
+        .get();
+      purchasesDocs = purchasesSnap.docs;
+    } catch {
+      const purchasesSnap = await db.collection('purchases').limit(200).get();
+      purchasesDocs = purchasesSnap.docs.sort((a, b) => {
+        const tA = a.data().purchasedAt?.toMillis?.() ?? new Date(a.data().purchasedAt || 0).getTime();
+        const tB = b.data().purchasedAt?.toMillis?.() ?? new Date(b.data().purchasedAt || 0).getTime();
+        return tB - tA;
+      });
+    }
 
-    const purchases = purchasesSnap.docs.map((doc) => ({
+    const purchases = purchasesDocs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
       purchasedAt: doc.data().purchasedAt?.toDate?.()?.toISOString() ?? doc.data().purchasedAt,
@@ -169,7 +225,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { items, recommendationId, paymentMethod = 'qris' } = body;
+    const {
+      items,
+      recommendationId,
+      paymentMethod = 'qris',
+      notes,
+      cashReceived,
+      cashChange,
+    } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Daftar produk tidak boleh kosong' }, { status: 400 });
@@ -429,6 +492,9 @@ export async function POST(request: NextRequest) {
         status: 'valid',
         source: isCustomer ? 'customer_recommendation_checkout' : 'ba_assisted_sale',
         paymentMethod,
+        notes: notes || null,
+        cashReceived: cashReceived ? Number(cashReceived) : null,
+        cashChange: cashChange ? Number(cashChange) : null,
         voidReason: null,
         voidedBy: null,
         voidedAt: null,

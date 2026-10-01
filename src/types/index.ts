@@ -123,6 +123,10 @@ export interface Purchase {
   purchasedAt: string;
   totalAmount: number;
   status: PurchaseStatus;
+  paymentMethod?: string;
+  notes?: string;
+  cashReceived?: number;
+  cashChange?: number;
   voidReason?: string;
   voidedBy?: string;
   voidedAt?: string;

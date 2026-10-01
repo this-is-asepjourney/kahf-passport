@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { db, auth } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Purchase } from '@/types';

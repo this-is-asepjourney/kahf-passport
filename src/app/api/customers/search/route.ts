@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     const digitsOnly = cleanQuery.replace(/[^0-9]/g, '');
 
     // Kumpulkan dokumen dari berbagai strategi query Firestore
-    const candidateDocsMap = new Map<string, Record<string, unknown>>();
+    const candidateDocsMap = new Map<string, Record<string, any>>();
 
     const queryPromises: Promise<void>[] = [];
 

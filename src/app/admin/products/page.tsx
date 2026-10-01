@@ -55,7 +55,7 @@ const STANDARD_KAHF_CATEGORIES = [
   { name: 'Body Care', slug: 'body-care', icon: '🧼', description: 'Lotion dan sabun pembersih tubuh wangi menyegarkan' },
 ];
 
-export const TARGET_SKIN_TYPES = [
+const TARGET_SKIN_TYPES = [
   { id: 'normal', label: '🌿 Normal' },
   { id: 'oily', label: '💧 Berminyak (Oily)' },
   { id: 'dry', label: '🏜️ Kering (Dry)' },
@@ -63,7 +63,7 @@ export const TARGET_SKIN_TYPES = [
   { id: 'sensitive', label: '🌸 Sensitif' },
 ];
 
-export const TARGET_SKIN_CONCERNS = [
+const TARGET_SKIN_CONCERNS = [
   { id: 'jerawat', label: '🔴 Jerawat & Acne Care' },
   { id: 'kusam', label: '🌑 Kulit Kusam / Mencerahkan' },
   { id: 'komedo_pori', label: '⭕ Komedo & Pori-pori' },
@@ -73,7 +73,7 @@ export const TARGET_SKIN_CONCERNS = [
   { id: 'sensitif', label: '🌸 Sensitif & Iritasi' },
 ];
 
-export const ROUTINE_STEPS = [
+const ROUTINE_STEPS = [
   { id: 'cleanser', label: '🧴 Step 1: Pembersih Wajah (Face Wash)' },
   { id: 'treatment', label: '🧪 Step 2: Perawatan Intensif (Serum / Treatment)' },
   { id: 'moisturizer', label: '💧 Step 3: Pelembap Wajah (Moisturizer)' },

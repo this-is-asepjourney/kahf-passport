@@ -73,7 +73,7 @@ export default function BaCustomerDetailPage() {
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
   const [notifTitle, setNotifTitle] = useState('Pesan dari Beauty Advisor Wardah 🌿');
   const [notifMessage, setNotifMessage] = useState('');
-  const [notifType, setNotifType] = useState<'ba_message' | 'follow_up' | 'promo'>('ba_message');
+  const [notifType, setNotifType] = useState<'ba_message' | 'follow_up' | 'promo' | 'consultation'>('ba_message');
   const [notifSubmitting, setNotifSubmitting] = useState(false);
 
   // Form for recording purchases
@@ -505,14 +505,23 @@ export default function BaCustomerDetailPage() {
             </button>
           )}
 
-          {/* Record Purchase Button */}
+          {/* Kasir & Update Belanja Hari Ini (Scan Barcode) */}
+          <Link
+            href={`/ba/scan?customerId=${customer.id}`}
+            className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#277A73] to-[#1E6560] text-white hover:opacity-95 font-bold text-sm transition-all duration-200 shadow-md shadow-[#277A73]/25 flex items-center justify-center gap-2"
+          >
+            <ShoppingBag className="w-4 h-4 text-white" />
+            <span>Kasir & Update Belanja Hari Ini (Tampilkan Barcode)</span>
+          </Link>
+
+          {/* Record Purchase Modal Trigger */}
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className="w-full py-4 px-6 rounded-2xl bg-[#2C5C59] text-white font-bold text-sm hover:bg-[#1f4240] transition-all duration-200 shadow-md shadow-[#2C5C59]/25 flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-6 rounded-2xl bg-white border border-gray-200 text-gray-700 font-bold text-xs hover:bg-gray-50 transition-all duration-200 shadow-xs flex items-center justify-center gap-2"
           >
-            <Plus className="w-4 h-4" />
-            <span>Input Pembelian Baru</span>
+            <Plus className="w-4 h-4 text-[#277A73]" />
+            <span>Input Transaksi Cepat (Form Sederhana)</span>
           </button>
 
           {/* Tampilkan Barcode Riwayat Customer (untuk di-Scan Customer) */}

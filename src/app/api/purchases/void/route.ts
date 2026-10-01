@@ -42,12 +42,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Pembelian sudah divoid' }, { status: 409 });
     }
 
-    // BA can only void their own store's purchases
+    // BA can void their own purchases, or purchases in their store
     if (
       decodedToken.role === 'ba' &&
+      purchase.baId !== decodedToken.uid &&
+      decodedToken.storeId &&
+      purchase.storeId &&
       purchase.storeId !== decodedToken.storeId
     ) {
-      return NextResponse.json({ error: 'Tidak bisa void pembelian toko lain' }, { status: 403 });
+      return NextResponse.json({ error: 'Tidak bisa void pembelian counter lain' }, { status: 403 });
     }
 
     await db.runTransaction(async (tx) => {
