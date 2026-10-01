@@ -148,6 +148,14 @@ service cloud.firestore {
       allow write: if isBA() || isAdmin();
     }
 
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isBA() || isAdmin());
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && (isBA() || isAdmin());
+    }
+
     // Audit logs
     match /auditLogs/{logId} {
       allow read: if isAdmin();
@@ -156,3 +164,4 @@ service cloud.firestore {
     }
   }
 }
+

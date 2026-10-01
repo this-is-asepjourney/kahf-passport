@@ -10,12 +10,18 @@ import { formatIDR, formatDate } from '@/lib/utils';
 import type { Customer, Purchase } from '@/types';
 import Link from 'next/link';
 import { ImageUpload } from '@/components/ImageUpload';
+import { PassportBottomNav } from '@/components/passport/PassportBottomNav';
+import { useNotifications } from '@/hooks/useNotifications';
+import { Bell } from 'lucide-react';
+
 
 export default function PassportPage() {
   const { user, customer, setCustomer, loading, signOutUser } = useAuth();
+  const { unreadCount } = useNotifications();
   const router = useRouter();
   const [recentPurchases, setRecentPurchases] = useState<Purchase[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
+
 
   useEffect(() => {
     if (!loading && !user) {
@@ -122,13 +128,27 @@ export default function PassportPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/passport/qr" className="p-3 bg-white rounded-2xl shadow-sm text-[#6DB9B2] hover:bg-gray-50">
+          {/* Notifications with Live Badge */}
+          <Link
+            href="/passport/notifications"
+            className="p-3 bg-white rounded-2xl shadow-sm text-[#2C5C59] hover:bg-gray-50 relative transition-all active:scale-95"
+            title="Kotak Masuk Notifikasi"
+          >
+            <Bell className="w-5 h-5 text-[#2C5C59]" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-white animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
+          <Link href="/passport/qr" className="p-3 bg-white rounded-2xl shadow-sm text-[#6DB9B2] hover:bg-gray-50" title="QR Passport">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><rect width="8" height="8" x="3" y="3" /><rect width="8" height="8" x="13" y="3" /><rect width="8" height="8" x="13" y="13" /><path d="M3 13h8v8H3z" /></svg>
           </Link>
           <button onClick={signOutUser} className="p-3 bg-red-50 rounded-2xl shadow-sm text-red-500 hover:bg-red-100" title="Keluar">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>
           </button>
         </div>
+
       </div>
 
       {/* Member Banner */}
@@ -243,26 +263,7 @@ export default function PassportPage() {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-        <div className="w-full max-w-lg bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center safe-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.03)] pointer-events-auto">
-          <Link href="/passport" className="flex flex-col items-center gap-1 text-[#6DB9B2]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-            <span className="text-[10px] font-medium">Home</span>
-          </Link>
-          <Link href="/passport/qr" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#6DB9B2]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><rect width="8" height="8" x="3" y="3" /><rect width="8" height="8" x="13" y="3" /><rect width="8" height="8" x="13" y="13" /><path d="M3 13h8v8H3z" /></svg>
-            <span className="text-[10px] font-medium">Passport</span>
-          </Link>
-          <div className="flex flex-col items-center gap-1 text-gray-400">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-            <span className="text-[10px] font-medium">Notifikasi</span>
-          </div>
-          <Link href="/passport/profile" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#6DB9B2]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-            <span className="text-[10px] font-medium">Akun</span>
-          </Link>
-        </div>
-      </div>
+      <PassportBottomNav activeTab="home" />
       </div>
     </div>
   );

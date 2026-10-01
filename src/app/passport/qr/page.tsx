@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
 import QRCode from 'react-qr-code';
 import Link from 'next/link';
+import { PassportBottomNav } from '@/components/passport/PassportBottomNav';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://Kahf.app';
 
@@ -117,6 +118,8 @@ export default function QrPage() {
           </div>
         )}
       </div>
+
+      <PassportBottomNav activeTab="qr" />
     </div>
   );
 }

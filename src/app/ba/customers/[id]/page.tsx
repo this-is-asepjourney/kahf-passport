@@ -37,6 +37,10 @@ import {
   ShieldCheck,
   AlertCircle,
   ExternalLink,
+  Bell,
+  Send,
+  MessageSquare,
+  X,
 } from 'lucide-react';
 
 const SKIN_TYPE_DESCRIPTIONS: Record<string, string> = {
@@ -63,6 +67,11 @@ export default function BaCustomerDetailPage() {
   const [success, setSuccess] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [showNotifModal, setShowNotifModal] = useState(false);
+  const [notifTitle, setNotifTitle] = useState('Pesan dari Beauty Advisor Kahf 🌿');
+  const [notifMessage, setNotifMessage] = useState('');
+  const [notifType, setNotifType] = useState<'ba_message' | 'follow_up' | 'promo'>('ba_message');
+  const [notifSubmitting, setNotifSubmitting] = useState(false);
 
   // Form for recording purchases
   const form = useForm<RecordPurchaseFormValues>({
@@ -265,6 +274,44 @@ export default function BaCustomerDetailPage() {
       }
     } catch {
       setError('Gagal memproses pembatalan.');
+    }
+  };
+
+  // Send Notification to Customer
+  const handleSendNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customer || !notifTitle.trim() || !notifMessage.trim()) return;
+
+    setNotifSubmitting(true);
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Sesi login telah berakhir.');
+
+      const res = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          customerId: customer.id,
+          title: notifTitle.trim(),
+          message: notifMessage.trim(),
+          type: notifType,
+          actionUrl: '/passport/recommendations',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal mengirim pesan');
+
+      setSuccess(`Notifikasi berhasil dikirim ke akun Kahf Passport ${customer.fullName}!`);
+      setShowNotifModal(false);
+      setNotifMessage('');
+    } catch (err: any) {
+      setError(err.message || 'Gagal mengirim notifikasi');
+    } finally {
+      setNotifSubmitting(false);
     }
   };
 
@@ -472,6 +519,20 @@ export default function BaCustomerDetailPage() {
             <span>📝</span>
             <span>{skinProfile ? 'Perbarui Konsultasi Kulit' : 'Mulai Konsultasi Kulit'}</span>
           </Link>
+
+          {/* Kirim Notifikasi ke Passport Customer */}
+          <button
+            type="button"
+            onClick={() => {
+              setNotifTitle('Pesan Khusus dari Beauty Advisor Kahf 🌿');
+              setNotifMessage('');
+              setShowNotifModal(true);
+            }}
+            className="w-full py-3.5 px-6 rounded-2xl bg-white text-[#2C5C59] hover:bg-gray-50 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-2 border border-[#2C5C59]/20 shadow-sm"
+          >
+            <Bell className="w-4 h-4 text-[#2C5C59]" />
+            <span>Kirim Pesan ke Passport Customer</span>
+          </button>
 
           {/* Quick Product Recommendation Link for BA */}
           <Link
@@ -876,6 +937,123 @@ export default function BaCustomerDetailPage() {
           </div>
         </div>
       )}
-    </div>
+
+      {/* Modal Kirim Notifikasi / Pesan BA */}
+      {showNotifModal && customer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#2C5C59] bg-[#E2F0EF] px-2.5 py-1 rounded-full">
+                  Kirim Notifikasi Passport
+                </span>
+                <h3 className="text-lg font-black text-gray-900 mt-2">Kirim Pesan untuk {customer.fullName}</h3>
+                <p className="text-xs text-gray-500">Pesan akan langsung tampil di menu Notifikasi Kahf Passport pelanggan.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNotifModal(false)}
+                className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Templates */}
+            <div>
+              <label className="text-[11px] font-bold text-gray-600 block mb-1.5 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Template Cepat
+              </label>
+              <div className="grid grid-cols-1 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotifTitle('Rekomendasi Grooming Kahf Sesuai Kulitmu 🌿');
+                    setNotifMessage(`Halo Bro ${customer.fullName}, berdasarkan tipe kulitmu (${skinProfile?.skinType || 'normal'}), jangan lupa gunakan sunscreen dan moisturizer Kahf secara teratur untuk perlindungan maksimal ya!`);
+                    setNotifType('ba_message');
+                  }}
+                  className="p-2 text-left rounded-xl border border-gray-200 hover:border-[#2C5C59] text-xs text-gray-700 hover:bg-[#E2F0EF]/30 transition-colors"
+                >
+                  🧴 Rekomendasi Rutinitas Produk Kulit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotifTitle('Hasil Konsultasi Kulit Siap Dilihat ✨');
+                    setNotifMessage(`Halo Bro ${customer.fullName}, hasil konsultasi kulitmu sudah tersimpan di Passport. Kamu bisa cek rekomendasi produk terbaik kapan pun di tab Rekomendasi.`);
+                    setNotifType('consultation');
+                  }}
+                  className="p-2 text-left rounded-xl border border-gray-200 hover:border-[#2C5C59] text-xs text-gray-700 hover:bg-[#E2F0EF]/30 transition-colors"
+                >
+                  📝 Pengingat Hasil Konsultasi Kulit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotifTitle('Pengingat Refill Produk Favoritmu 🧴');
+                    setNotifMessage(`Halo Bro ${customer.fullName}, stok produk perawatan Kahf-mu mungkin sudah menipis nih. Yuk mampir lagi ke booth kami untuk refill dan raih reward poin spesial!`);
+                    setNotifType('follow_up');
+                  }}
+                  className="p-2 text-left rounded-xl border border-gray-200 hover:border-[#2C5C59] text-xs text-gray-700 hover:bg-[#E2F0EF]/30 transition-colors"
+                >
+                  🔄 Pengingat Repurchase / Refill
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSendNotification} className="space-y-3.5">
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Judul Notifikasi</label>
+                <input
+                  type="text"
+                  required
+                  value={notifTitle}
+                  onChange={(e) => setNotifTitle(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#2C5C59] focus:ring-1 focus:ring-[#2C5C59]"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Isi Pesan</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={notifMessage}
+                  onChange={(e) => setNotifMessage(e.target.value)}
+                  placeholder="Tulis pesan personal untuk customer..."
+                  className="w-full px-3.5 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#2C5C59] focus:ring-1 focus:ring-[#2C5C59]"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNotifModal(false)}
+                  disabled={notifSubmitting}
+                  className="w-1/3 py-2.5 border border-gray-200 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={notifSubmitting}
+                  className="w-2/3 py-2.5 bg-[#2C5C59] text-white font-bold rounded-xl text-xs hover:bg-[#1f4240] transition-colors flex items-center justify-center gap-2 shadow-sm"
+                >
+                  {notifSubmitting ? (
+                    <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      Kirim Pesan Sekarang
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      </div>
   );
 }

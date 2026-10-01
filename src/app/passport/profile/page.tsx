@@ -7,6 +7,7 @@ import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/fire
 import { db } from '@/lib/firebase/client';
 import type { Customer } from '@/types';
 import Link from 'next/link';
+import { PassportBottomNav } from '@/components/passport/PassportBottomNav';
 
 export default function PassportProfilePage() {
   const { user, loading, signOutUser } = useAuth();
@@ -180,24 +181,7 @@ export default function PassportProfilePage() {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-50 safe-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-        <Link href="/passport" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#6DB9B2]">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <span className="text-[10px] font-medium">Home</span>
-        </Link>
-        <Link href="/passport/qr" className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#6DB9B2]">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><rect width="8" height="8" x="3" y="3"/></svg>
-          <span className="text-[10px] font-medium">Passport</span>
-        </Link>
-        <div className="flex flex-col items-center gap-1 text-gray-400">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-          <span className="text-[10px] font-medium">Notifikasi</span>
-        </div>
-        <Link href="/passport/profile" className="flex flex-col items-center gap-1 text-[#6DB9B2]">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span className="text-[10px] font-medium">Akun</span>
-        </Link>
-      </div>
+      <PassportBottomNav activeTab="profile" />
     </div>
   );
 }

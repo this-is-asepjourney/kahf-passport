@@ -324,3 +324,34 @@ export const TIER_THRESHOLDS: Record<LoyaltyTier, number> = {
 
 // Points per IDR spent
 export const POINTS_PER_IDR = 10000; // 1 point per 10.000 IDR
+
+// =============================================
+// Customer Notification & Messaging
+// =============================================
+
+export type NotificationType =
+  | 'ba_message'        // Pesan langsung / personal dari BA
+  | 'follow_up'         // Notifikasi tindak lanjut / repurchase
+  | 'admin_broadcast'   // Pesan resmi / pengumuman dari Admin
+  | 'consultation'      // Hasil konsultasi & rekomendasi produk siap
+  | 'reward'            // Notifikasi poin / reward
+  | 'promo';            // Info promo & produk baru
+
+export interface CustomerNotification {
+  id: string;
+  customerId: string;
+  customerUid?: string | null;
+  customerName?: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'ba' | 'admin';
+  storeId?: string;
+  storeName?: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  isRead: boolean;
+  actionUrl?: string;
+  createdAt: string;
+}
+

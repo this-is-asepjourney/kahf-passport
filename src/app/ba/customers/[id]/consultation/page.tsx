@@ -105,6 +105,24 @@ export default function BaConsultationPage() {
       });
       if (res.ok) {
         setSuccess(true);
+        // Otomatis kirim notifikasi hasil konsultasi ke akun Kahf Passport customer
+        try {
+          await fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({
+              customerId,
+              title: 'Hasil Konsultasi Kulit Siap ✨',
+              message: customer?.fullName
+                ? `Halo Bro ${customer.fullName}, profil kulitmu (${skinType}) baru saja dianalisis oleh Beauty Advisor Kahf. Cek analisa tipe kulit dan ${selectedProducts.length} rekomendasi produk pilihan di Passport-mu!`
+                : `Hasil analisa kulitmu (${skinType}) baru saja diperbarui oleh Beauty Advisor Kahf. Cek rekomendasi produk pilihan di Passport-mu!`,
+              type: 'consultation',
+              actionUrl: '/passport/recommendations',
+            }),
+          });
+        } catch (notifErr) {
+          console.error('Non-blocking notif error:', notifErr);
+        }
       } else {
         const result = await res.json();
         alert(result.error ?? 'Gagal menyimpan');
