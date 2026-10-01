@@ -26,7 +26,7 @@ export default function RegisterPage() {
     try {
       // Create Firebase Auth user using phone as email
       const normalizedPhone = normalizePhone(data.phone);
-      const email = `${normalizedPhone.replace('+', '')}@kahf.id`;
+      const email = `${normalizedPhone.replace('+', '')}@wardah.id`;
 
       const credential = await createUserWithEmailAndPassword(auth, email, data.password);
       const idToken = await credential.user.getIdToken();
@@ -76,7 +76,7 @@ export default function RegisterPage() {
               <span className="text-3xl">📋</span>
             </div>
             <h1 className="text-2xl font-bold text-gray-900">Daftar Akun</h1>
-            <p className="text-sm text-gray-500 mt-1">Buat Kahf Passport Anda</p>
+            <p className="text-sm text-gray-500 mt-1">Buat Wardah Beauty Passport Anda</p>
           </div>
 
           {/* Error */}
@@ -166,7 +166,7 @@ export default function RegisterPage() {
                   <Link href="/privacy" className="text-purple-600 font-semibold underline" target="_blank">
                     Kebijakan Privasi
                   </Link>{' '}
-                  dan pemrosesan data pribadi saya untuk keperluan layanan Kahf Passport.
+                  dan pemrosesan data pribadi saya untuk keperluan layanan Wardah Beauty Passport.
                 </span>
               </label>
               {detailsForm.formState.errors.consentAgreed && (

@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Kebijakan Privasi',
-  description: 'Kebijakan privasi Kahf Passport mengenai pemrosesan data pribadi pelanggan.',
+  description: 'Kebijakan privasi Wardah Beauty Passport mengenai pemrosesan data pribadi pelanggan.',
 };
 
 export default function PrivacyPage() {
@@ -21,21 +21,21 @@ export default function PrivacyPage() {
         <div className="bg-white rounded-3xl shadow-sm p-6 prose prose-sm max-w-none">
           <h2 className="text-lg font-bold text-gray-900 mb-4">1. Pendahuluan</h2>
           <p className="text-gray-600 mb-4">
-            Kahf (&quot;kami&quot;) menghormati privasi Anda dan berkomitmen untuk melindungi data pribadi yang Anda berikan melalui platform Kahf Passport. Kebijakan privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, dan melindungi informasi Anda.
+            Wardah (&quot;kami&quot;) menghormati privasi Anda dan berkomitmen untuk melindungi data pribadi yang Anda berikan melalui platform Wardah Beauty Passport. Kebijakan privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, dan melindungi informasi Anda.
           </p>
 
           <h2 className="text-lg font-bold text-gray-900 mb-4">2. Data yang Kami Kumpulkan</h2>
           <ul className="text-gray-600 mb-4 space-y-2 list-disc list-inside">
             <li>Nama lengkap dan nomor telepon (WhatsApp)</li>
             <li>Tanggal lahir, jenis kelamin, kota (opsional)</li>
-            <li>Riwayat pembelian produk Kahf di counter</li>
+            <li>Riwayat pembelian produk Wardah di counter</li>
             <li>Data perangkat dan interaksi dengan aplikasi</li>
           </ul>
 
           <h2 className="text-lg font-bold text-gray-900 mb-4">3. Tujuan Pemrosesan Data</h2>
           <ul className="text-gray-600 mb-4 space-y-2 list-disc list-inside">
-            <li>Menyediakan layanan Kahf Passport (riwayat pembelian digital)</li>
-            <li>Memfasilitasi layanan Brand Ambassador kami</li>
+            <li>Menyediakan layanan Wardah Beauty Passport (riwayat pembelian digital)</li>
+            <li>Memfasilitasi layanan Beauty Advisor kami</li>
             <li>Analisis data penjualan internal (anonim/agregat)</li>
             <li>Komunikasi layanan (dengan persetujuan Anda)</li>
           </ul>
@@ -62,12 +62,12 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-bold text-gray-900 mb-4">7. Kontak</h2>
           <p className="text-gray-600 mb-4">
             Untuk pertanyaan atau permintaan terkait data pribadi, hubungi kami di:{' '}
-            <strong>privacy@Kahf.id</strong>
+            <strong>customercare@wardahbeauty.com</strong>
           </p>
 
           <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-200">
             <p className="text-xs text-amber-700">
-              ⚠️ Dokumen ini adalah draf dan belum merupakan nasihat hukum. Konsultasikan dengan tim legal Kahf sebelum publikasi resmi.
+              ⚠️ Dokumen ini adalah draf dan belum merupakan nasihat hukum. Konsultasikan dengan tim legal Wardah sebelum publikasi resmi.
             </p>
           </div>
         </div>

@@ -30,19 +30,19 @@ export default function HomePage() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
         {/* Brand Text */}
         <div className="text-center mb-12">
-          <h2 className="text-xl text-[#2C5C59] font-medium tracking-wide mb-1">Kahf</h2>
-          <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#6DB9B2] to-[#E8C5C8] tracking-tight">
-            FIND ME<span className="text-[#E8C5C8]">✨</span>
+          <h2 className="text-2xl text-[#1E6B65] font-bold tracking-wider mb-1">Wardah</h2>
+          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#1E6B65] to-[#E8A598] tracking-tight">
+            BEAUTY PASSPORT<span className="text-[#E8A598]">✨</span>
           </h1>
         </div>
 
         {/* Tagline */}
         <div className="text-center max-w-sm mb-16 space-y-4">
-          <p className="text-lg font-medium text-[#2C5C59]">
+          <p className="text-lg font-medium text-[#1E6B65]">
             From Beauty Consultation<br />to Personalized Beauty Experience
           </p>
           <p className="text-sm text-gray-500 leading-relaxed">
-            Satu platform terintegrasi untuk mendukung Beauty Advisor memberikan pelayanan yang lebih cepat, personal, dan berkelanjutan kepada setiap pelanggan Kahf di seluruh Indonesia.
+            Satu platform terintegrasi untuk mendukung Beauty Advisor memberikan pelayanan yang lebih cepat, personal, dan berkelanjutan kepada setiap pelanggan Wardah di seluruh Indonesia.
           </p>
         </div>
 

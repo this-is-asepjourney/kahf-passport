@@ -12,20 +12,20 @@ import { Bell, Send, CheckCircle2, AlertCircle, Sparkles, ShieldCheck } from 'lu
 
 const ADMIN_NOTIF_TEMPLATES = [
   {
-    title: 'Pengumuman Resmi Manajemen Kahf 📢',
-    message: 'Halo Bro! Terima kasih telah menjadi bagian dari keluarga Kahf Passport. Nikmati berbagai kemudahan cek hasil konsultasi kulit, riwayat belanja, dan reward loyalitas eksklusif di aplikasi ini.',
+    title: 'Pengumuman Resmi Manajemen Wardah 📢',
+    message: 'Halo Kak! Terima kasih telah menjadi bagian dari keluarga Wardah Beauty Passport. Nikmati berbagai kemudahan cek hasil konsultasi kulit, riwayat belanja, dan reward loyalitas eksklusif di aplikasi ini.',
     type: 'admin_broadcast' as const,
     actionUrl: '/passport',
   },
   {
     title: 'Bonus Poin Loyalitas & Reward Spesial 🎁',
-    message: 'Kabar gembira! Akunmu mendapatkan penawaran spesial atau pembaruan poin loyalitas Kahf. Kunjungi booth Kahf terdekat untuk menukarkan poinmu dengan produk favorit.',
+    message: 'Kabar gembira! Akunmu mendapatkan penawaran spesial atau pembaruan poin loyalitas Wardah. Kunjungi counter Wardah terdekat untuk menukarkan poinmu dengan produk favorit.',
     type: 'reward' as const,
     actionUrl: '/passport',
   },
   {
     title: 'Promo Spesial Member Eksklusif ✨',
-    message: 'Spesial untuk kamu! Dapatkan diskon istimewa pada pembelian produk grooming Kahf pilihan minggu ini. Cukup tunjukkan ID Passport-mu saat berbelanja di booth resmi.',
+    message: 'Spesial untuk kamu! Dapatkan diskon istimewa pada pembelian produk perawatan Wardah pilihan minggu ini. Cukup tunjukkan barcode Passport-mu saat berbelanja di counter resmi.',
     type: 'promo' as const,
     actionUrl: '/passport',
   },
@@ -180,7 +180,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal mengirim pesan');
 
-      setNotifStatus({ type: 'success', text: 'Notifikasi berhasil dikirim langsung ke Kahf Passport customer!' });
+      setNotifStatus({ type: 'success', text: 'Notifikasi berhasil dikirim langsung ke Wardah Beauty Passport customer!' });
       setTimeout(() => setNotifStatus(null), 3000);
     } catch (err: any) {
       setNotifStatus({ type: 'error', text: err.message || 'Gagal mengirim notifikasi' });
@@ -337,7 +337,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 <Bell className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-base">Kirim Pesan Resmi ke Kahf Passport</h3>
+                <h3 className="font-bold text-gray-900 text-base">Kirim Pesan Resmi ke Wardah Passport</h3>
                 <p className="text-xs text-gray-500">Kirim notifikasi individual dari Manajemen/Admin ke customer ini.</p>
               </div>
             </div>
@@ -491,7 +491,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
               <span>Sistem Notifikasi Terintegrasi</span>
             </div>
             <p className="text-purple-800/80 leading-relaxed text-[11px]">
-              Setiap pesan yang dikirim oleh Admin atau Beauty Advisor akan disinkronkan secara real-time ke aplikasi Kahf Passport pelanggan via Cloud Firestore.
+              Setiap pesan yang dikirim oleh Admin atau Beauty Advisor akan disinkronkan secara real-time ke aplikasi Wardah Beauty Passport pelanggan via Cloud Firestore.
             </p>
           </div>
         </div>

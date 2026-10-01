@@ -291,7 +291,7 @@ export default function BaSettingsPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold">{fullName || 'Beauty Advisor Kahf'}</h2>
+              <h2 className="text-lg font-bold">{fullName || 'Beauty Advisor Wardah'}</h2>
               <span className="bg-[#6DB9B2]/30 text-[#A2E0DB] px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-[#6DB9B2]/40">
                 Official BA
               </span>
@@ -299,7 +299,7 @@ export default function BaSettingsPage() {
             <p className="text-white/80 text-xs mt-0.5">{user?.email}</p>
             <div className="flex items-center gap-2 mt-2 flex-wrap text-xs text-white/90">
               <span className="bg-white/10 px-2.5 py-0.5 rounded-lg font-mono text-[11px]">
-                {employeeCode || 'KHF-BA-OFFICIAL'}
+                {employeeCode || 'WRD-BA-OFFICIAL'}
               </span>
               {storeName && (
                 <span className="flex items-center gap-1 bg-white/10 px-2.5 py-0.5 rounded-lg text-[11px]">

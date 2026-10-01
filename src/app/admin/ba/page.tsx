@@ -162,7 +162,7 @@ export default function AdminBaPage() {
             <h1 className="text-2xl font-bold text-gray-900">BA Performance</h1>
           </div>
           <p className="text-sm text-gray-500 mt-1 ml-11">
-            Monitoring performa penjualan dan aktivitas Brand Ambassador di seluruh toko.
+            Monitoring performa penjualan dan aktivitas Beauty Advisor di seluruh toko.
           </p>
         </div>
 
@@ -179,7 +179,7 @@ export default function AdminBaPage() {
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
-          <p className="text-xs text-gray-500 font-medium">Total Brand Ambassador</p>
+          <p className="text-xs text-gray-500 font-medium">Total Beauty Advisor</p>
           <h3 className="text-2xl font-bold text-gray-900 mt-1">{rawProfiles.length} BA</h3>
           <p className="text-[11px] text-[#2C5C59] font-semibold mt-1">
             {rawProfiles.filter(p => p.isActive !== false).length} aktif bertugas
@@ -248,7 +248,7 @@ export default function AdminBaPage() {
             </div>
           ) : computedBaList.length === 0 ? (
             <div className="p-8 text-center text-gray-500 text-sm">
-              Belum ada data Brand Ambassador yang cocok.
+              Belum ada data Beauty Advisor yang cocok.
             </div>
           ) : (
             <table className="w-full text-left border-collapse">

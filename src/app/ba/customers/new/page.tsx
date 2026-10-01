@@ -109,7 +109,7 @@ export default function BaNewCustomerPage() {
 
             <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100">
               <p className="text-xs text-blue-700">
-                ℹ️ Nomor HP ini akan digunakan customer untuk klaim akun Kahf Passport mereka.
+                ℹ️ Nomor HP ini akan digunakan customer untuk klaim akun Wardah Passport mereka.
               </p>
             </div>
 

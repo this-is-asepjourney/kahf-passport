@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const gatewayUrl = process.env.WHATSAPP_GATEWAY_URL;
     const token = process.env.WHATSAPP_GATEWAY_TOKEN;
 
-    const message = `Kode OTP Kahf Passport Anda: *${otp}*\n\nBerlaku 5 menit. Jangan bagikan kode ini ke siapapun.`;
+    const message = `Kode OTP Wardah Beauty Passport Anda: *${otp}*\n\nBerlaku 5 menit. Jangan bagikan kode ini ke siapapun.`;
 
     if (gatewayUrl && token) {
       const response = await fetch(gatewayUrl, {

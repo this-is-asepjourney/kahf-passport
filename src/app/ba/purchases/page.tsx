@@ -110,7 +110,7 @@ export default function BaPurchasesPage() {
           <div>
             <h1 className="text-xl font-bold text-white">Laporan & Riwayat Transaksi</h1>
             <p className="text-white/70 text-xs mt-0.5">
-              Riwayat penjualan pribadi Anda sebagai Brand Ambassador Kahf
+              Riwayat penjualan pribadi Anda sebagai Beauty Advisor Wardah
             </p>
           </div>
         </div>

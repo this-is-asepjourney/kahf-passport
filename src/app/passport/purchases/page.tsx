@@ -1,19 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { Purchase } from '@/types';
 import Link from 'next/link';
 import { formatIDR, formatDateTime } from '@/lib/utils';
+import { PassportBottomNav } from '@/components/passport/PassportBottomNav';
+import { ArrowLeft, CheckCircle2, ShoppingBag, ChevronDown, Sparkles } from 'lucide-react';
 
 export default function PurchasesPage() {
   const { user, customer, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isScanned = searchParams.get('scanned') === 'true';
+
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const [showScanSuccessBanner, setShowScanSuccessBanner] = useState(isScanned);
 
   useEffect(() => {
     const loadPurchases = async () => {
@@ -47,118 +53,164 @@ export default function PurchasesPage() {
     else if (!loading) setDataLoading(false);
   }, [user, customer?.id, loading, router]);
 
-
   if (loading || dataLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 rounded-full border-4 border-[#E8C5C8] border-t-[#6DB9B2] animate-spin" />
+        <div className="w-8 h-8 rounded-full border-4 border-[#E2F0EF] border-t-[#277A73] animate-spin" />
       </div>
     );
   }
 
+  const validCount = purchases.filter(p => p.status === 'valid').length;
+
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col relative">
+    <div className="min-h-screen bg-[#F8FBFB] flex flex-col relative pb-28">
+      {/* Background Shapes */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#E8C5C8] rounded-full mix-blend-multiply filter blur-3xl opacity-30" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#E2F5F3] rounded-full filter blur-3xl opacity-50" />
       </div>
 
       {/* Header */}
-      <div className="px-6 pt-12 pb-6 z-10 relative bg-white/50 backdrop-blur-sm border-b border-gray-100">
+      <div className="px-6 pt-10 pb-5 z-10 relative bg-white/70 backdrop-blur-md border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/passport" className="text-[#2C5C59] p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+          <Link href="/passport" className="text-[#277A73] p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
+            <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-xl font-bold text-[#2C5C59]">Riwayat Pembelian</h1>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">Riwayat Pembelian</h1>
+            <p className="text-xs text-gray-500">{validCount} transaksi tercatat</p>
+          </div>
         </div>
-        <p className="text-gray-500 text-sm mt-1 ml-11">
-          {purchases.filter(p => p.status === 'valid').length} transaksi valid
-        </p>
+
+        <span className="text-sm font-bold text-[#277A73] font-serif">Wardah</span>
       </div>
 
-      <div className="px-6 py-6 space-y-4 z-10 relative">
+      <div className="px-5 py-5 space-y-4 z-10 relative max-w-lg mx-auto w-full">
+        {/* Banner if Customer Just Scanned Barcode from BA */}
+        {showScanSuccessBanner && (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-[#277A73] text-white shadow-md flex items-start justify-between gap-3 animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold">Barcode Berhasil Dipindai!</p>
+                <p className="text-[11px] text-white/90 mt-0.5 leading-snug">
+                  Riwayat transaksi terbaru Anda di counter Wardah telah tersinkronisasi langsung ke Beauty Passport.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowScanSuccessBanner(false)}
+              className="text-white/80 hover:text-white text-xs font-bold px-1"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {purchases.length === 0 ? (
-          <div className="bg-white rounded-3xl shadow-sm p-8 text-center border border-gray-100">
-            <p className="text-5xl mb-3">🛒</p>
-            <h2 className="font-bold text-[#2C5C59] mb-2">Belum Ada Riwayat</h2>
-            <p className="text-sm text-gray-500">
-              Pembelian Anda di counter Kahf akan muncul di sini
+          <div className="bg-white rounded-3xl shadow-xs p-8 text-center border border-gray-100">
+            <span className="text-4xl mb-3 block">🛍️</span>
+            <h2 className="font-bold text-gray-900 text-base mb-1">Belum Ada Riwayat Belanja</h2>
+            <p className="text-xs text-gray-500 leading-relaxed max-w-xs mx-auto">
+              Pembelian produk Wardah Anda di counter resmi akan otomatis dicatat oleh Beauty Advisor dan muncul di sini.
             </p>
+            <Link
+              href="/passport/qr"
+              className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-[#277A73] text-white text-xs font-bold rounded-xl shadow-xs hover:bg-[#1E6560] transition-colors"
+            >
+              <span>Scan Barcode BA</span>
+            </Link>
           </div>
         ) : (
-          purchases.map((purchase) => (
-            <PurchaseCard key={purchase.id} purchase={purchase} />
+          purchases.map((purchase, index) => (
+            <PurchaseCard key={purchase.id} purchase={purchase} defaultExpanded={index === 0 && isScanned} />
           ))
         )}
       </div>
+
+      {/* Slogan */}
+      <div className="px-6 pt-6 pb-2 text-center text-[#277A73] text-xs font-medium italic relative z-10">
+        Your Beauty Journey Our Priority 💙
+      </div>
+
+      {/* Bottom Navigation */}
+      <PassportBottomNav activeTab="home" />
     </div>
   );
 }
 
-function PurchaseCard({ purchase }: { purchase: Purchase }) {
-  const [expanded, setExpanded] = useState(false);
+function PurchaseCard({ purchase, defaultExpanded = false }: { purchase: Purchase; defaultExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
     <div
-      className={`bg-white rounded-3xl shadow-sm overflow-hidden animate-in transition-all border border-gray-100 ${purchase.status === 'void' ? 'opacity-60' : ''
-        }`}
+      className={`bg-white rounded-3xl shadow-xs overflow-hidden transition-all border border-gray-100 ${
+        purchase.status === 'void' ? 'opacity-60' : ''
+      }`}
     >
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full p-5 text-left focus:outline-none"
+        className="w-full p-4.5 text-left focus:outline-none"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#E2F0EF] flex items-center justify-center text-[#6DB9B2] flex-shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
+            <div className="w-11 h-11 rounded-2xl bg-[#E8F6F4] flex items-center justify-center text-[#277A73] shrink-0 shadow-xs">
+              <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-semibold text-[#2C5C59] text-base">{purchase.storeNameSnapshot}</p>
-              <p className="text-xs text-gray-500">{formatDateTime(purchase.purchasedAt)}</p>
-              <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">No. {purchase.invoiceNo}</p>
+              <p className="font-bold text-gray-900 text-sm leading-snug">
+                {purchase.storeNameSnapshot || 'Counter Resmi Wardah'}
+              </p>
+              <p className="text-[11px] text-gray-500 mt-0.5">{formatDateTime(purchase.purchasedAt)}</p>
+              <p className="text-[10px] text-gray-400 font-mono mt-1 uppercase">No. {purchase.invoiceNo}</p>
             </div>
           </div>
-          <div className="text-right flex-shrink-0">
-            <p className="font-bold text-[#6DB9B2]">{formatIDR(purchase.totalAmount)}</p>
+          <div className="text-right shrink-0">
+            <p className="font-bold text-[#277A73] text-sm">{formatIDR(purchase.totalAmount)}</p>
             {purchase.status === 'void' ? (
-              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] bg-red-50 text-red-600 font-medium border border-red-100">
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] bg-red-50 text-red-600 font-bold border border-red-100">
                 Void
               </span>
             ) : (
-              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] bg-[#E2F0EF] text-[#6DB9B2] font-medium border border-[#6DB9B2]/20">
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 font-bold border border-emerald-100">
                 Valid
               </span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-4">
-          <p className="text-xs text-gray-500">
-            {purchase.items.length} item · BA: <span className="font-medium">{purchase.baNameSnapshot}</span>
+        <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-50 text-xs text-gray-500">
+          <p className="text-[11px]">
+            {purchase.items?.length || 0} item · BA: <span className="font-bold text-gray-700">{purchase.baNameSnapshot || 'Beauty Advisor'}</span>
           </p>
-          <span className="text-[#6DB9B2] bg-[#E2F0EF] p-1.5 rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${expanded ? 'rotate-180' : ''}`}><path d="m6 9 6 6 6-6" /></svg>
+          <span className="text-[#277A73] bg-[#E8F6F4] p-1 rounded-full">
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </span>
         </div>
       </button>
 
       {expanded && (
-        <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-3 animate-in bg-gray-50/50">
-          {purchase.items.map((item, i) => (
-            <div key={i} className="flex items-center justify-between">
+        <div className="px-5 pb-5 border-t border-gray-100 pt-3.5 space-y-2.5 bg-gray-50/50 text-xs">
+          {purchase.items?.map((item, i) => (
+            <div key={i} className="flex items-center justify-between py-1">
               <div>
-                <p className="text-sm font-medium text-[#2C5C59]">{item.productName}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{item.sku} · {item.qty} × {formatIDR(item.unitPrice)}</p>
+                <p className="font-semibold text-gray-900">{item.productName}</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  {item.sku} · {item.qty} × {formatIDR(item.unitPrice)}
+                </p>
               </div>
-              <p className="text-sm font-semibold text-[#6DB9B2]">{formatIDR(item.subtotal)}</p>
+              <p className="font-bold text-gray-800">{formatIDR(item.subtotal)}</p>
             </div>
           ))}
-          <div className="pt-3 border-t border-dashed border-gray-200 flex justify-between">
-            <p className="text-sm font-bold text-[#2C5C59]">Total</p>
-            <p className="text-sm font-bold text-[#6DB9B2]">{formatIDR(purchase.totalAmount)}</p>
+
+          <div className="pt-2.5 border-t border-dashed border-gray-200 flex justify-between items-center">
+            <p className="font-bold text-gray-700">Total Pembayaran</p>
+            <p className="font-extrabold text-[#277A73] text-sm">{formatIDR(purchase.totalAmount)}</p>
           </div>
+
           {purchase.status === 'void' && purchase.voidReason && (
-            <div className="mt-3 p-3 rounded-2xl bg-red-50 border border-red-100">
-              <p className="text-xs text-red-600 font-medium">Alasan void: {purchase.voidReason}</p>
+            <div className="mt-2 p-2.5 rounded-xl bg-red-50 border border-red-100 text-xs text-red-600 font-medium">
+              Alasan void: {purchase.voidReason}
             </div>
           )}
         </div>

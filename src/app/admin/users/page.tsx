@@ -100,7 +100,7 @@ export default function AdminUsersPage() {
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all text-sm"
               >
                 <option value="customer">customer</option>
-                <option value="ba">ba (Brand Ambassador)</option>
+                <option value="ba">ba (Beauty Advisor)</option>
                 <option value="admin_region">admin_region</option>
                 <option value="super_admin">super_admin</option>
               </select>

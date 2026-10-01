@@ -79,7 +79,7 @@ export default function BaProductsPage() {
     );
     return found
       ? { name: found.name, icon: found.icon || '🧴' }
-      : { name: catIdOrName || 'Kahf Men', icon: '🧴' };
+      : { name: catIdOrName || 'Wardah', icon: '🧴' };
   };
 
   // Check if a product is relevant to a skin profile or filter
@@ -146,7 +146,7 @@ export default function BaProductsPage() {
   const selectedCustomerObj = customers.find(c => c.id === selectedCustomerId);
 
   const handleShareProduct = (product: Product) => {
-    const text = `Halo! Kami merekomendasikan ${product.name} (${formatIDR(product.defaultPrice)}) yang sangat cocok untuk perawatan kulit Anda. Info lebih lanjut: kahf.id`;
+    const text = `Halo! Kami merekomendasikan ${product.name} (${formatIDR(product.defaultPrice)}) yang sangat cocok untuk perawatan kulit Anda. Info lebih lanjut: wardahbeauty.com`;
     navigator.clipboard.writeText(text);
     setCopiedSku(product.sku);
     setTimeout(() => setCopiedSku(null), 2500);
@@ -175,7 +175,7 @@ export default function BaProductsPage() {
             </span>
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Telusuri katalog produk Kahf yang disinkronkan langsung dengan kategori admin dan profil kulit pelanggan.
+            Telusuri katalog produk Wardah yang disinkronkan langsung dengan kategori admin dan profil kulit pelanggan.
           </p>
         </div>
 
@@ -351,7 +351,7 @@ export default function BaProductsPage() {
 
                 <h3 className="font-bold text-gray-900 text-base leading-snug mb-1.5">{p.name}</h3>
                 <p className="text-xs text-gray-500 line-clamp-2 mb-4 flex-1">
-                  {p.description || 'Produk perawatan esensial pria Kahf.'}
+                  {p.description || 'Produk perawatan kecantikan esensial Wardah.'}
                 </p>
 
                 <div className="flex items-center justify-between pt-3 border-t border-gray-50">

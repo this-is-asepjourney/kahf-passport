@@ -46,13 +46,13 @@ import {
 } from 'lucide-react';
 
 const STANDARD_KAHF_CATEGORIES = [
-  { name: 'Face Wash', slug: 'face-wash', icon: '🧴', description: 'Pembersih wajah harian dengan HydroBalance & formula lembut' },
-  { name: 'Moisturizer', slug: 'moisturizer', icon: '💧', description: 'Pelembap wajah penutrisi skin barrier & pengontrol minyak' },
-  { name: 'Sunscreen', slug: 'sunscreen', icon: '☀️', description: 'Tabir surya pelindung UVA/UVB dan polusi untuk pria aktif' },
-  { name: 'Serum & Treatment', slug: 'serum-treatment', icon: '🧪', description: 'Konsentrat perawatan intensif jerawat, kusam & pori' },
-  { name: 'Fragrance', slug: 'fragrance', icon: '✨', description: 'Eau de Parfum & Eau de Toilette khas pria maskulin' },
-  { name: 'Beard & Hair Care', slug: 'beard-hair', icon: '💈', description: 'Perawatan rambut, brewok & kulit kepala segar' },
-  { name: 'Body Wash', slug: 'body-wash', icon: '🧼', description: 'Sabun pembersih tubuh segar antibakterial' },
+  { name: 'Facial Wash & Cleanser', slug: 'cleanser', icon: '🧴', description: 'Pembersih wajah lembut membersihkan pori tanpa membuat kering' },
+  { name: 'Moisturizer & Cream', slug: 'moisturizer', icon: '💧', description: 'Pelembap wajah penutrisi skin barrier & mencerahkan kulit' },
+  { name: 'Sunscreen UV Shield', slug: 'sunscreen', icon: '☀️', description: 'Tabir surya pelindung UVA/UVB dan blue light perlindungan menyeluruh' },
+  { name: 'Serum & Ampoule', slug: 'serum-treatment', icon: '🧪', description: 'Konsentrat perawatan intensif mencerahkan, anti-aging & acne' },
+  { name: 'Toner & Essence', slug: 'toner-essence', icon: '✨', description: 'Penyegar wajah penyeimbang pH & hidrasi kulit' },
+  { name: 'Lip Care & Color', slug: 'lip-care', icon: '💄', description: 'Pewarna dan pelembap bibir tahan lama kaya vitamin' },
+  { name: 'Body Care', slug: 'body-care', icon: '🧼', description: 'Lotion dan sabun pembersih tubuh wangi menyegarkan' },
 ];
 
 export const TARGET_SKIN_TYPES = [
@@ -493,7 +493,7 @@ export default function AdminProductsPage() {
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2.5">
             <span>Product Insight & Rekomendasi</span>
             <span className="text-xs bg-[#E2F0EF] text-[#2C5C59] font-bold px-3 py-1 rounded-full border border-[#6DB9B2]/30">
-              Katalog Kahf
+              Katalog Wardah
             </span>
           </h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -831,7 +831,7 @@ export default function AdminProductsPage() {
                   className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition-colors flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  <span>{seedingCategories ? 'Memuat...' : 'Inisialisasi Kategori Kahf'}</span>
+                  <span>{seedingCategories ? 'Memuat...' : 'Inisialisasi Kategori Wardah'}</span>
                 </button>
               )}
               <button
@@ -869,7 +869,7 @@ export default function AdminProductsPage() {
                     <h3 className="font-bold text-gray-900 text-base mt-3">{cat.name}</h3>
                     <p className="text-[11px] text-gray-400 font-mono mt-0.5">Kode: {cat.slug || cat.id}</p>
                     <p className="text-xs text-gray-500 mt-2 line-clamp-2">
-                      {cat.description || 'Kategori perawatan resmi Kahf.'}
+                      {cat.description || 'Kategori perawatan resmi Wardah.'}
                     </p>
                   </div>
 
@@ -900,7 +900,7 @@ export default function AdminProductsPage() {
                 <span className="text-4xl block mb-2">🏷️</span>
                 <p className="font-bold text-gray-800">Belum ada kategori yang terdaftar</p>
                 <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto mb-4">
-                  Tambahkan kategori baru atau gunakan tombol di bawah untuk mengisi kategori standar produk Kahf.
+                  Tambahkan kategori baru atau gunakan tombol di bawah untuk mengisi kategori standar produk Wardah.
                 </p>
                 <button
                   onClick={handleSeedStandardCategories}
@@ -908,7 +908,7 @@ export default function AdminProductsPage() {
                   className="px-5 py-2.5 bg-[#2C5C59] text-white font-bold text-xs rounded-xl hover:bg-[#1f4240] transition-colors shadow-sm inline-flex items-center gap-2"
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>{seedingCategories ? 'Menambahkan...' : 'Inisialisasi Kategori Standar Kahf'}</span>
+                  <span>{seedingCategories ? 'Menambahkan...' : 'Inisialisasi Kategori Standar Wardah'}</span>
                 </button>
               </div>
             )}
@@ -930,7 +930,7 @@ export default function AdminProductsPage() {
                   {editingProduct ? 'Edit Data Produk' : 'Tambah Produk Baru'}
                 </h2>
                 <p className="text-xs text-gray-500">
-                  {editingProduct ? 'Perbarui informasi produk dan harga' : 'Tambahkan produk ke katalog resmi Kahf'}
+                  {editingProduct ? 'Perbarui informasi produk dan harga' : 'Tambahkan produk ke katalog resmi Wardah'}
                 </p>
               </div>
               <button
@@ -974,7 +974,7 @@ export default function AdminProductsPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Mis. Kahf Oil and Acne Care Face Wash"
+                    placeholder="Mis. Wardah UV Shield Essential Gel Sunscreen Serum"
                     {...registerProduct('name')}
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs focus:border-[#6DB9B2] focus:ring-2 focus:ring-[#6DB9B2]/20 outline-none"
                   />

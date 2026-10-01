@@ -1,20 +1,36 @@
-admin -> akses ke dashboard untuk melakukan monitoring penjualan dan perkembangan produk, interaksi antara pekerja dibawah nya ba dan customer.
-      -> customer insight untuk melihat data lengkap para customer dan memanage nya
-      -> product insight untuk memantau barang/produk yang ada atau sedang dijual, dapat melakuan curd barang yang sedang ada atau mau menambahkan
-      -> BA performance memonitoring kinerja BA yang berkerja dibawahnya data dapat diambil dari aktivitas yang terjadi antara ba dengan customer di web app project kahf-passport
-      -> Regional Report membuat laporan berdasarkan wilayah atau daerah
-      -> Pengaturan pada umunya untuk mengatur akun admin, seperti merubah password dlll
+# Konsep Sistem Wardah Beauty Passport
 
-BA ->Dashboard/beranda memantau pergerakan customer, jadi mengetahui berapa banyak customer yang telah menjadi bagian dari kahf.id
-   -> customer database untuk ba memantau atau mencari customer dan dapat melihat customer yang sudah terdaftar 
-   -> konsultasi ba melakukan scan atua mencari nama/nomor handphone customer untuk mencatat atau memberikan rekomendasikan produk yang ada
-   -> rekomendasi product daftar produk yang muncul ketika ba melakukan scan dan mendapatkan data dari customer tentang kulit '
-   -> follow up ba memiliki pekerjaan untuk melakukan follow up kepada customer yang > 25 hari setelah pembelian terakhir.
-   -> Laporan / Riwayat untuk menampilkan hasil riwayat transaksi yang sudah masuk atau ia capai jadi riwayat atau transaksi per akun setiap ba memiliki riwayat dan transaksi nya sendiri
+## 1. Administrator (Admin)
+- **Dashboard**: Monitoring penjualan nasional, perkembangan produk, dan interaksi antara Beauty Advisor (BA) dan customer.
+- **Customer Insight**: Melihat data lengkap profil pelanggan, riwayat transaksi, dan manajemen akun.
+- **Product Insight**: Memantau katalog produk kecantikan Wardah, manajemen kategori, harga, dan SKU (CRUD).
+- **BA Performance**: Memantau performa dan kontribusi Beauty Advisor berdasarkan transaksi riil dan konsultasi.
+- **Regional Report**: Analisis performa dan ekspor laporan penjualan berdasarkan wilayah counter/kota.
+- **Pengaturan Akun**: Preferensi sistem, notifikasi, dan keamanan akun.
 
-customer -> Riwayat pembelian untuk melihat riwayat pembelian yang sudah dilakukan
-         -> Skin profile untuk mengisi profil kulit sesuai dengan opsi yang tertera
-         -> Rekomendasi personal menampilkan produk yang sesuai dengan keadaan kulit yang sudah diisi sesuai dengan rekomendasi ba
-         ->
- 
+## 2. Beauty Advisor (BA)
+- **Beranda (Dashboard)**: Sapaan "Halo, Beauty Advisor!", memantau statistik customer, omset penjualan, dan transaksi harian.
+- **Customer Database**: Pencarian cepat pelanggan, profil lengkap, riwayat belanja, dan analisa jenis kulit.
+- **Kasir & Barcode Riwayat (Scan Barcode)**:
+  - BA mencari/memilih customer yang sedang dilayani.
+  - BA meng-update produk Wardah apa saja yang dibeli customer, kuantitas, dan total belanja.
+  - BA menampilkan **Barcode QR Riwayat Customer** di layar untuk dipindai oleh customer.
+  - Menyediakan juga kamera pemindai kartu customer jika diperlukan.
+- **Konsultasi Kulit**: Analisis tipe kulit, concern (masalah kulit), dan rekomendasi produk resmi dari BA.
+- **Rekomendasi Produk**: Katalog produk Wardah live-sync dengan filter tipe kulit dan direct WhatsApp share.
+- **Follow Up**: Pengingat otomatis untuk pelanggan > 25 hari untuk repeat order via pesan aplikasi atau WhatsApp.
+- **Riwayat Penjualan**: Laporan transaksi pribadi masing-masing BA.
 
+## 3. Customer (Wardah Beauty Passport)
+- **Desain Beauty Passport** (Sesuai Referensi Wardah):
+  - Header: Identitas Wardah, avatar berhijab, sapaan "Halo, {Nama}! ✨ Ini adalah beauty passport kamu."
+  - Kartu Tier Member: Member Gold & Poin Loyalitas Wardah.
+  - 5 Quick Menu Pastel:
+    1. **Riwayat Pembelian**: Riwayat belanja lengkap, invoice, dan status transaksi.
+    2. **Riwayat Konsultasi**: Catatan konsultasi dan saran dari Beauty Advisor.
+    3. **Rekomendasi Personal**: Produk perawatan harian yang dipersonalisasi sesuai jenis kulit.
+    4. **Loyalty & Reward**: Kumpulkan poin dan tukarkan dengan produk Wardah gratis.
+    5. **Favorite Products**: Produk favorit yang disimpan pelanggan.
+  - **Beauty Journey Card**: "Kulit lebih sehat, percaya diri setiap hari bersama Wardah 💙"
+  - **Scan Barcode BA**: Kamera scanner cepat untuk memindai barcode yang ditampilkan oleh BA di counter, langsung menampilkan riwayat pembelian terbaru pelanggan.
+  - Slogan: *"Your Beauty Journey Our Priority 💙"*

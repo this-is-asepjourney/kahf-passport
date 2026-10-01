@@ -189,14 +189,14 @@ export async function POST(request: NextRequest) {
         if (!fallbackStoreSnap.empty) {
           const sDoc = fallbackStoreSnap.docs[0];
           storeId = sDoc.id;
-          storeNameSnapshot = sDoc.data().name || 'Kahf Official Store';
+          storeNameSnapshot = sDoc.data().name || 'Counter Resmi Wardah';
           regionId = sDoc.data().regionId || 'dki_jakarta';
         } else {
           const anyStoreSnap = await db.collection('stores').limit(1).get();
           if (!anyStoreSnap.empty) {
             const sDoc = anyStoreSnap.docs[0];
             storeId = sDoc.id;
-            storeNameSnapshot = sDoc.data().name || 'Kahf Official Store';
+            storeNameSnapshot = sDoc.data().name || 'Counter Resmi Wardah';
             regionId = sDoc.data().regionId || 'dki_jakarta';
           }
         }
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
       if (storeId && !storeNameSnapshot) {
         const storeDoc = await db.collection('stores').doc(storeId).get();
         if (storeDoc.exists) {
-          storeNameSnapshot = storeDoc.data()?.name || 'Kahf Store';
+          storeNameSnapshot = storeDoc.data()?.name || 'Counter Wardah';
           regionId = storeDoc.data()?.regionId || 'dki_jakarta';
         }
       }
@@ -215,12 +215,12 @@ export async function POST(request: NextRequest) {
       if (baId && !baNameSnapshot) {
         try {
           const baUser = await adminAuth().getUser(baId);
-          baNameSnapshot = baUser.displayName || 'Kahf Beauty Advisor';
+          baNameSnapshot = baUser.displayName || 'Beauty Advisor Wardah';
         } catch {
-          baNameSnapshot = 'Kahf Beauty Advisor';
+          baNameSnapshot = 'Beauty Advisor Wardah';
         }
       } else if (!baId) {
-        baNameSnapshot = 'Kahf Online Advisor';
+        baNameSnapshot = 'Wardah Online Advisor';
       }
     } else {
       // BA flow: verify store & BA user
@@ -255,11 +255,11 @@ export async function POST(request: NextRequest) {
           storeId = storeDoc.id;
         } else {
           // If NO stores exist in database at all, auto-provision default store so transactions never fail!
-          const defaultStoreRef = db.collection('stores').doc('store_kahf_flagship');
+          const defaultStoreRef = db.collection('stores').doc('store_wardah_flagship');
           await defaultStoreRef.set({
-            id: 'store_kahf_flagship',
-            name: 'Kahf Flagship Counter',
-            code: 'KHF-JKT-01',
+            id: 'store_wardah_flagship',
+            name: 'Wardah Flagship Counter',
+            code: 'WRD-JKT-01',
             city: 'Jakarta Selatan',
             regionId: 'dki_jakarta',
             address: 'Grand Indonesia Mall, Lantai UG',
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
       }
 
       const storeData = storeDoc.data()!;
-      storeNameSnapshot = storeData.name || 'Kahf Store';
+      storeNameSnapshot = storeData.name || 'Counter Wardah';
       regionId = storeData.regionId || 'dki_jakarta';
 
       // Resolve BA user display name
@@ -306,8 +306,8 @@ export async function POST(request: NextRequest) {
 
         return {
           productId: item.productId,
-          productName: product?.name || item.productName || 'Produk Kahf',
-          sku: product?.sku || item.sku || 'KAHF-DEFAULT',
+          productName: product?.name || item.productName || 'Produk Wardah',
+          sku: product?.sku || item.sku || 'WRD-DEFAULT',
           qty,
           unitPrice,
           subtotal,
@@ -360,13 +360,13 @@ export async function POST(request: NextRequest) {
       tx.set(purchaseRef, {
         id: purchaseId,
         customerId,
-        customerNameSnapshot: customer.fullName || 'Customer Kahf',
+        customerNameSnapshot: customer.fullName || 'Customer Wardah',
         customerPhoneSnapshot: customer.phone || '',
         storeId: storeId || 'store_online',
-        storeNameSnapshot: storeNameSnapshot || 'Kahf Counter',
+        storeNameSnapshot: storeNameSnapshot || 'Counter Wardah',
         regionId: regionId || 'dki_jakarta',
         baId: baId || 'ba_online',
-        baNameSnapshot: baNameSnapshot || 'Kahf Beauty Advisor',
+        baNameSnapshot: baNameSnapshot || 'Beauty Advisor Wardah',
         invoiceNo,
         purchasedAt: Timestamp.fromDate(purchaseDate),
         totalAmount,
@@ -531,7 +531,7 @@ export async function POST(request: NextRequest) {
         reminderDate: reminderDateStr,
         status: 'pending',
         purchaseId,
-        message: `Hai ${customer.fullName || 'Bro'}! Sudah 30 hari sejak pembelian ${item.productName}. Saatnya repurchase produk Kahf favoritmu! 🌿`,
+        message: `Hai Kak ${customer.fullName || 'Cantik'}! Sudah 30 hari sejak pembelian ${item.productName}. Saatnya repurchase produk Wardah favoritmu! ✨`,
         createdAt: FieldValue.serverTimestamp(),
       });
     }

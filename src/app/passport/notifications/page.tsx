@@ -122,7 +122,7 @@ export default function CustomerNotificationsPage() {
             </Link>
             <div>
               <h1 className="text-xl font-extrabold text-[#2C5C59] tracking-tight">Kotak Masuk</h1>
-              <p className="text-xs text-gray-500">Pesan dari BA & Admin Kahf</p>
+              <p className="text-xs text-gray-500">Pesan dari Beauty Advisor & Admin Wardah</p>
             </div>
           </div>
 

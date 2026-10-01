@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Set role claim and password/email for login
-    const email = `${phoneNumber.replace('+', '')}@kahf.id`;
+    const email = `${phoneNumber.replace('+', '')}@wardah.id`;
     await adminAuth().updateUser(uid, {
       email,
       password,

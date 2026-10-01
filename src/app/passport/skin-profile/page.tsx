@@ -132,7 +132,7 @@ export default function SkinProfilePage() {
       const data = await res.json();
       if (res.ok) {
         if (data.awardedPoints > 0) {
-          alert(`Yeay! Anda mendapatkan ${data.awardedPoints} Poin Kahf karena telah mengisi Skin Profile!`);
+          alert(`Yeay! Anda mendapatkan ${data.awardedPoints} Poin Wardah karena telah mengisi Skin Profile!`);
         }
         setIsFilling(false);
         // reload will be triggered manually or by page refresh since we moved loadData

@@ -43,7 +43,7 @@ export default function SettingsPage() {
       router.replace('/login');
     }
     if (user) {
-      setDisplayName(user.displayName || 'Admin Kahf');
+      setDisplayName(user.displayName || 'Admin Wardah');
       
       // Load saved preferences from localStorage if available
       try {
@@ -212,7 +212,7 @@ export default function SettingsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pengaturan</h1>
-          <p className="text-sm text-gray-500 mt-1">Kelola preferensi akun dan sistem administrasi Kahf.</p>
+          <p className="text-sm text-gray-500 mt-1">Kelola preferensi akun dan sistem administrasi Wardah.</p>
         </div>
       </div>
 

@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     const customerData = customerDoc.data();
 
     // Dapatkan profil pengirim
-    let senderName = senderProfileName || (isBA ? 'Beauty Advisor Kahf' : 'Admin Resmi Kahf');
+    let senderName = senderProfileName || (isBA ? 'Beauty Advisor Wardah' : 'Admin Resmi Wardah');
     let storeName = '';
 
     if (userStoreId) {

@@ -23,6 +23,7 @@ import { recordPurchaseSchema, type RecordPurchaseFormValues } from '@/lib/valid
 import type { Customer, Purchase, Product, SkinProfile, Consultation } from '@/types';
 import { formatIDR, formatDateTime, formatDate, maskPhone } from '@/lib/utils';
 import Link from 'next/link';
+import QRCode from 'react-qr-code';
 import {
   ArrowLeft,
   ShoppingBag,
@@ -41,6 +42,7 @@ import {
   Send,
   MessageSquare,
   X,
+  QrCode,
 } from 'lucide-react';
 
 const SKIN_TYPE_DESCRIPTIONS: Record<string, string> = {
@@ -68,7 +70,8 @@ export default function BaCustomerDetailPage() {
   const [showForm, setShowForm] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showNotifModal, setShowNotifModal] = useState(false);
-  const [notifTitle, setNotifTitle] = useState('Pesan dari Beauty Advisor Kahf 🌿');
+  const [showBarcodeModal, setShowBarcodeModal] = useState(false);
+  const [notifTitle, setNotifTitle] = useState('Pesan dari Beauty Advisor Wardah 🌿');
   const [notifMessage, setNotifMessage] = useState('');
   const [notifType, setNotifType] = useState<'ba_message' | 'follow_up' | 'promo'>('ba_message');
   const [notifSubmitting, setNotifSubmitting] = useState(false);
@@ -218,7 +221,7 @@ export default function BaCustomerDetailPage() {
             const product = products.find((p) => p.id === item.productId);
             return {
               productId: item.productId,
-              productName: product?.name ?? 'Produk Kahf',
+              productName: product?.name ?? 'Produk Wardah',
               sku: product?.sku ?? '',
               qty: Number(item.qty),
               unitPrice: Number(item.unitPrice),
@@ -233,8 +236,9 @@ export default function BaCustomerDetailPage() {
         throw new Error(result.error || 'Gagal menyimpan pembelian');
       }
 
-      setSuccess('Transaksi berhasil dicatat dan poin customer telah bertambah!');
+      setSuccess('Transaksi berhasil dicatat! Tampilkan barcode ke customer untuk scan riwayat.');
       setShowForm(false);
+      setShowBarcodeModal(true);
       form.reset({
         invoiceNo: `INV-${Date.now().toString().slice(-6)}`,
         purchasedAt: new Date().toISOString().slice(0, 16),
@@ -305,7 +309,7 @@ export default function BaCustomerDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal mengirim pesan');
 
-      setSuccess(`Notifikasi berhasil dikirim ke akun Kahf Passport ${customer.fullName}!`);
+      setSuccess(`Notifikasi berhasil dikirim ke akun Wardah Passport ${customer.fullName}!`);
       setShowNotifModal(false);
       setNotifMessage('');
     } catch (err: any) {
@@ -336,7 +340,7 @@ export default function BaCustomerDetailPage() {
           </div>
           <h2 className="text-lg font-bold text-gray-900 mb-1">Customer Tidak Ditemukan</h2>
           <p className="text-xs text-gray-500 mb-6 leading-relaxed">
-            Data QR Code atau ID Customer tidak terdaftar pada sistem database Kahf Passport.
+            Data QR Code atau ID Customer tidak terdaftar pada sistem database Wardah Passport.
           </p>
           <Link
             href="/ba/scan"
@@ -511,6 +515,16 @@ export default function BaCustomerDetailPage() {
             <span>Input Pembelian Baru</span>
           </button>
 
+          {/* Tampilkan Barcode Riwayat Customer (untuk di-Scan Customer) */}
+          <button
+            type="button"
+            onClick={() => setShowBarcodeModal(true)}
+            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#277A73] to-[#1E6560] text-white hover:opacity-95 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-2 shadow-md shadow-[#277A73]/25"
+          >
+            <QrCode className="w-4 h-4 text-white" />
+            <span>Tampilkan Barcode Riwayat Customer (Untuk di-Scan)</span>
+          </button>
+
           {/* Update / Start Consultation Button */}
           <Link
             href={`/ba/customers/${customer.id}/consultation`}
@@ -524,7 +538,7 @@ export default function BaCustomerDetailPage() {
           <button
             type="button"
             onClick={() => {
-              setNotifTitle('Pesan Khusus dari Beauty Advisor Kahf 🌿');
+              setNotifTitle('Pesan Khusus dari Beauty Advisor Wardah ✨');
               setNotifMessage('');
               setShowNotifModal(true);
             }}
@@ -839,7 +853,7 @@ export default function BaCustomerDetailPage() {
 
                         <div>
                           <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                            Pilih Produk Kahf
+                            Pilih Produk Wardah
                           </label>
                           <select
                             {...form.register(`items.${index}.productId`)}
@@ -948,7 +962,7 @@ export default function BaCustomerDetailPage() {
                   Kirim Notifikasi Passport
                 </span>
                 <h3 className="text-lg font-black text-gray-900 mt-2">Kirim Pesan untuk {customer.fullName}</h3>
-                <p className="text-xs text-gray-500">Pesan akan langsung tampil di menu Notifikasi Kahf Passport pelanggan.</p>
+                <p className="text-xs text-gray-500">Pesan akan langsung tampil di menu Notifikasi Wardah Passport pelanggan.</p>
               </div>
               <button
                 type="button"
@@ -969,8 +983,8 @@ export default function BaCustomerDetailPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setNotifTitle('Rekomendasi Grooming Kahf Sesuai Kulitmu 🌿');
-                    setNotifMessage(`Halo Bro ${customer.fullName}, berdasarkan tipe kulitmu (${skinProfile?.skinType || 'normal'}), jangan lupa gunakan sunscreen dan moisturizer Kahf secara teratur untuk perlindungan maksimal ya!`);
+                    setNotifTitle('Rekomendasi Skincare Wardah Sesuai Kulitmu ✨');
+                    setNotifMessage(`Halo Kak ${customer.fullName}, berdasarkan tipe kulitmu (${skinProfile?.skinType || 'normal'}), jangan lupa gunakan sunscreen dan moisturizer Wardah secara teratur untuk perlindungan maksimal ya!`);
                     setNotifType('ba_message');
                   }}
                   className="p-2 text-left rounded-xl border border-gray-200 hover:border-[#2C5C59] text-xs text-gray-700 hover:bg-[#E2F0EF]/30 transition-colors"
@@ -981,7 +995,7 @@ export default function BaCustomerDetailPage() {
                   type="button"
                   onClick={() => {
                     setNotifTitle('Hasil Konsultasi Kulit Siap Dilihat ✨');
-                    setNotifMessage(`Halo Bro ${customer.fullName}, hasil konsultasi kulitmu sudah tersimpan di Passport. Kamu bisa cek rekomendasi produk terbaik kapan pun di tab Rekomendasi.`);
+                    setNotifMessage(`Halo Kak ${customer.fullName}, hasil konsultasi kulitmu sudah tersimpan di Passport. Kamu bisa cek rekomendasi produk terbaik kapan pun di tab Rekomendasi.`);
                     setNotifType('consultation');
                   }}
                   className="p-2 text-left rounded-xl border border-gray-200 hover:border-[#2C5C59] text-xs text-gray-700 hover:bg-[#E2F0EF]/30 transition-colors"
@@ -992,7 +1006,7 @@ export default function BaCustomerDetailPage() {
                   type="button"
                   onClick={() => {
                     setNotifTitle('Pengingat Refill Produk Favoritmu 🧴');
-                    setNotifMessage(`Halo Bro ${customer.fullName}, stok produk perawatan Kahf-mu mungkin sudah menipis nih. Yuk mampir lagi ke booth kami untuk refill dan raih reward poin spesial!`);
+                    setNotifMessage(`Halo Kak ${customer.fullName}, stok produk perawatan Wardah-mu mungkin sudah menipis nih. Yuk mampir lagi ke counter kami untuk refill dan raih reward poin spesial!`);
                     setNotifType('follow_up');
                   }}
                   className="p-2 text-left rounded-xl border border-gray-200 hover:border-[#2C5C59] text-xs text-gray-700 hover:bg-[#E2F0EF]/30 transition-colors"
@@ -1051,6 +1065,53 @@ export default function BaCustomerDetailPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tampilkan Barcode Riwayat Customer untuk di-Scan */}
+      {showBarcodeModal && customer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center space-y-4">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <span className="text-[11px] font-bold text-[#277A73] bg-[#E8F6F4] px-2.5 py-0.5 rounded-full">
+                Barcode Riwayat Belanja
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowBarcodeModal(false)}
+                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <h3 className="text-base font-bold text-gray-900">{customer.fullName}</h3>
+              <p className="text-xs text-gray-500 font-mono">Member ID: {customer.memberNo}</p>
+            </div>
+
+            {/* QR Code */}
+            <div className="p-4 bg-white rounded-2xl border-2 border-[#277A73]/20 shadow-sm inline-block mx-auto">
+              <QRCode
+                value={typeof window !== 'undefined' ? `${window.location.origin}/passport/purchases?c=${customer.id}&scanned=true` : `${customer.id}`}
+                size={200}
+                level="H"
+                fgColor="#277A73"
+              />
+            </div>
+
+            <div className="bg-[#E8F6F4] p-3 rounded-2xl text-[11px] text-[#277A73] font-medium leading-relaxed">
+              📱 <strong>Minta customer membuka menu &apos;Passport&apos;</strong> di HP mereka dan scan barcode ini untuk melihat riwayat belanja terbarunya.
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowBarcodeModal(false)}
+              className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-colors"
+            >
+              Tutup
+            </button>
           </div>
         </div>
       )}

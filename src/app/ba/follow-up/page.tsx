@@ -15,17 +15,17 @@ interface FollowUpItem extends Customer {
 const TEMPLATES = [
   {
     title: 'Pengingat Stok & Repurchase 🧴',
-    message: 'Halo Bro! Stok produk perawatan Kahf-mu kemungkinan sudah menipis nih. Yuk mampir ke booth kami untuk refill produk favoritmu dan dapatkan poin loyalitas tambahan!',
+    message: 'Halo Kak! Stok produk perawatan Wardah-mu kemungkinan sudah menipis nih. Yuk mampir ke counter kami untuk refill produk favoritmu dan dapatkan poin loyalitas tambahan!',
     actionUrl: '/passport/recommendations',
   },
   {
     title: 'Konsultasi Perawatan Kulit Rutin ✨',
-    message: 'Halo Bro! Bagaimana perkembangan perawatan kulitmu? Jangan ragu mampir ke booth Kahf untuk cek kondisi kulit terkini dan konsultasi gratis dengan Beauty Advisor kami.',
+    message: 'Halo Kak! Bagaimana perkembangan perawatan kulitmu? Jangan ragu mampir ke counter Wardah untuk cek kondisi kulit terkini dan konsultasi gratis dengan Beauty Advisor kami.',
     actionUrl: '/passport',
   },
   {
-    title: 'Penawaran Spesial Member Kahf 🎁',
-    message: 'Halo Bro! Ada penawaran spesial dan bonus reward khusus untuk member Kahf Passport minggu ini. Tunjukkan barcode Passport-mu saat berbelanja ya!',
+    title: 'Penawaran Spesial Member Wardah 🎁',
+    message: 'Halo Kak! Ada penawaran spesial dan bonus reward khusus untuk member Wardah Passport minggu ini. Tunjukkan barcode Passport-mu saat berbelanja ya!',
     actionUrl: '/passport',
   },
 ];
@@ -158,7 +158,7 @@ export default function BaFollowUpPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Notifikasi & Follow Up</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Daftar pelanggan yang perlu dihubungi untuk repeat purchase (&gt; 25 hari). Kirim pesan langsung ke inbox Kahf Passport mereka atau via WhatsApp.
+          Daftar pelanggan yang perlu dihubungi untuk repeat purchase (&gt; 25 hari). Kirim pesan langsung ke inbox Wardah Passport mereka atau via WhatsApp.
         </p>
       </div>
 
@@ -196,7 +196,7 @@ export default function BaFollowUpPage() {
                   </button>
 
                   <Link 
-                    href={`https://wa.me/${c.phone.replace('+', '')}?text=Halo%20Kak%20${c.fullName},%20produk%20Kahf-nya%20masih%20ada?`}
+                    href={`https://wa.me/${c.phone.replace('+', '')}?text=Halo%20Kak%20${c.fullName},%20produk%20Wardah-nya%20masih%20ada?`}
                     target="_blank"
                     className="flex-1 md:flex-none text-center px-3.5 py-2.5 bg-green-50 text-green-700 font-semibold text-xs rounded-xl hover:bg-green-100 transition-colors"
                   >
@@ -226,7 +226,7 @@ export default function BaFollowUpPage() {
                   Kirim Notifikasi Passport
                 </span>
                 <h2 className="text-xl font-bold text-gray-900 mt-2">{activeCustomer.fullName}</h2>
-                <p className="text-xs text-gray-500">Pesan akan langsung muncul di kotak masuk aplikasi Kahf Passport pelanggan.</p>
+                <p className="text-xs text-gray-500">Pesan akan langsung muncul di kotak masuk aplikasi Wardah Passport pelanggan.</p>
               </div>
               <button
                 type="button"

@@ -164,8 +164,8 @@ export default function BaDashboardPage() {
       {/* Header & Search */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Halo, {user?.displayName ?? 'BA'}!</h1>
-          <p className="text-sm text-gray-500 mt-1">Brand Ambassador - {storeName}</p>
+          <h1 className="text-2xl font-bold text-gray-900">Halo, Beauty Advisor!</h1>
+          <p className="text-sm text-gray-500 mt-1">Beauty Advisor Wardah - {storeName}</p>
         </div>
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="relative w-full md:w-80">
@@ -273,7 +273,7 @@ export default function BaDashboardPage() {
             <div className="w-40 h-40 bg-[#E2F0EF]/30 rounded-full mb-6 flex items-center justify-center">
                <span className="text-6xl">🧴</span>
             </div>
-            <h3 className="font-bold text-gray-900 text-center text-lg">{featuredProduct?.name || 'Kahf Face Wash Series'}</h3>
+            <h3 className="font-bold text-gray-900 text-center text-lg">{featuredProduct?.name || 'Wardah Skincare Series'}</h3>
             <p className="text-sm text-gray-500 text-center mt-2 line-clamp-2">{featuredProduct?.description || 'Rekomendasi terbaik untuk pelanggan Anda.'}</p>
             <Link href="/ba/products" className="mt-8 w-full text-center px-4 py-3 bg-[#2C5C59] text-white text-sm font-semibold rounded-xl hover:bg-[#1f4240] transition-colors shadow-lg shadow-[#6DB9B2]/20">
               Lihat Katalog

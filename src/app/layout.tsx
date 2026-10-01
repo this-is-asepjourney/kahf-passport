@@ -14,13 +14,13 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Kahf Passport — Riwayat Pembelian Digital',
-    template: '%s | Kahf Passport',
+    default: 'Wardah Beauty Passport — Perjalanan Kecantikan Digital',
+    template: '%s | Wardah Beauty Passport',
   },
   description:
-    'Platform digital untuk pelanggan Kahf: lacak riwayat pembelian, tampilkan QR Passport, dan nikmati pengalaman belanja yang lebih personal.',
-  keywords: ['Kahf', 'passport', 'riwayat pembelian', 'kecantikan', 'loyalty'],
-  authors: [{ name: 'Kahf' }],
+    'Platform digital untuk pelanggan Wardah: lacak riwayat pembelian, konsultasi kulit, rekomendasi personal, dan loyalty reward eksklusif.',
+  keywords: ['Wardah', 'Beauty Passport', 'riwayat pembelian', 'kecantikan', 'loyalty', 'skincare'],
+  authors: [{ name: 'Wardah' }],
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',

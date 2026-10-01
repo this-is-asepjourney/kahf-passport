@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatIDR } from '@/lib/utils';
 import type { Customer, SkinProfile, Consultation, Product, Purchase } from '@/types';
+import PassportBottomNav from '@/components/passport/PassportBottomNav';
 import {
   ShoppingBag,
   Sparkles,
@@ -315,7 +316,7 @@ export default function PersonalRecommendationsPage() {
         items: cartItems.map((item) => ({
           productId: item.product.id,
           productName: item.product.name,
-          sku: item.product.sku || 'KAHF-DEFAULT',
+          sku: item.product.sku || 'WRD-DEFAULT',
           qty: item.qty,
           unitPrice: item.product.defaultPrice || 45000,
         })),
@@ -360,7 +361,7 @@ export default function PersonalRecommendationsPage() {
       <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 rounded-full border-4 border-[#E2F0EF] border-t-[#2C5C59] animate-spin" />
-          <p className="text-xs text-gray-500 font-medium">Menyusun rekomendasi personal Kahf...</p>
+          <p className="text-xs text-gray-500 font-medium">Menyusun rekomendasi personal Wardah...</p>
         </div>
       </div>
     );
@@ -381,14 +382,14 @@ export default function PersonalRecommendationsPage() {
             ←
           </Link>
           <span className="text-xs font-bold text-[#6DB9B2] uppercase tracking-wider">
-            Kahf Personal Guide & Store
+            Wardah Personal Guide & Store
           </span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#2C5C59]">Rekomendasi Personal</h1>
             <p className="text-xs text-gray-500 mt-1">
-              Rangkaian produk pilihan berdasarkan saran Brand Ambassador & analisis kulit Anda.
+              Rangkaian produk pilihan berdasarkan saran Beauty Advisor & analisis kulit Anda.
             </p>
           </div>
           <Link
@@ -449,7 +450,7 @@ export default function PersonalRecommendationsPage() {
             <div className="text-4xl mb-2">📋</div>
             <h3 className="font-bold text-gray-900 text-base">Belum Ada Data Profil Kulit</h3>
             <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
-              Lengkapi kuesioner profil kulit untuk mendapatkan rekomendasi produk Kahf yang 100% tepat sasaran.
+              Lengkapi kuesioner profil kulit untuk mendapatkan rekomendasi produk Wardah yang 100% tepat sasaran.
             </p>
             <Link
               href="/passport/skin-profile"
@@ -482,7 +483,7 @@ export default function PersonalRecommendationsPage() {
                       </span>
                     </div>
                     <p className="text-[10px] text-gray-500">
-                      Counter: {latestConsultation.storeNameSnapshot || 'Kahf Store'} ·{' '}
+                      Counter: {latestConsultation.storeNameSnapshot || 'Counter Wardah'} ·{' '}
                       {new Date(latestConsultation.createdAt).toLocaleDateString('id-ID')}
                     </p>
                   </div>
@@ -563,7 +564,7 @@ export default function PersonalRecommendationsPage() {
                             <span>{isBought ? 'Beli Ulang (Repurchase)' : 'Checkout Produk Ini'}</span>
                           </button>
                         ) : (
-                          <span className="text-[10px] text-gray-400">Tersedia di Counter Kahf</span>
+                          <span className="text-[10px] text-gray-400">Tersedia di Counter Wardah</span>
                         )}
                       </div>
                     </div>
@@ -579,8 +580,8 @@ export default function PersonalRecommendationsPage() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-[#2C5C59]">Rutinitas Perawatan Harian Kahf</h2>
-              <p className="text-xs text-gray-500">4 langkah praktis untuk hasil maksimal sesuai kulit pria</p>
+              <h2 className="text-lg font-bold text-[#2C5C59]">Rutinitas Perawatan Harian Wardah</h2>
+              <p className="text-xs text-gray-500">4 langkah praktis untuk hasil maksimal perawatan kulit cantikmu</p>
             </div>
 
             {/* Bundle Checkout Button */}
@@ -619,7 +620,7 @@ export default function PersonalRecommendationsPage() {
                         )}
                       </div>
                       <h4 className="font-bold text-gray-900 text-base mt-0.5">
-                        {item.product?.name || 'Kahf Men Care'}
+                        {item.product?.name || 'Wardah Skincare'}
                       </h4>
                       <p className="text-xs text-gray-500 mt-1 max-w-lg leading-relaxed">{item.benefit}</p>
                     </div>
@@ -631,7 +632,7 @@ export default function PersonalRecommendationsPage() {
                         {item.product?.defaultPrice ? formatIDR(item.product.defaultPrice) : 'Harga Standar'}
                       </span>
                       <span className="text-[10px] text-gray-400 bg-gray-50 px-2.5 py-0.5 rounded-lg border border-gray-100">
-                        SKU: {item.product?.sku || 'KAHF-01'}
+                        SKU: {item.product?.sku || 'WRD-01'}
                       </span>
                     </div>
 
@@ -668,7 +669,7 @@ export default function PersonalRecommendationsPage() {
         <div className="bg-gradient-to-r from-[#6DB9B2] to-[#4FA39B] rounded-3xl p-6 text-white text-center shadow-lg">
           <h3 className="text-lg font-bold">Ingin Konsultasi Langsung di Counter?</h3>
           <p className="text-xs text-white/90 mt-1 max-w-md mx-auto">
-            Kunjungi store Kahf terdekat dan tunjukkan QR Passport Anda kepada Brand Ambassador kami untuk analisa
+            Kunjungi counter Wardah terdekat dan tunjukkan barcode Passport Anda kepada Beauty Advisor kami untuk analisa
             kulit tatap muka.
           </p>
           <div className="mt-4 flex justify-center gap-3">
@@ -715,12 +716,12 @@ export default function PersonalRecommendationsPage() {
                 <Store className="w-4 h-4 text-[#2C5C59] shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold">
-                    Dilayani oleh Counter: {latestConsultation?.storeNameSnapshot || 'Kahf Flagship Store'}
+                    Dilayani oleh Counter: {latestConsultation?.storeNameSnapshot || 'Wardah Official Counter'}
                   </p>
                   <p className="text-[11px] text-gray-600 mt-0.5">
                     Konsultasi & Rekomendasi oleh BA:{' '}
                     <span className="font-bold text-[#2C5C59]">
-                      {latestConsultation?.baNameSnapshot || 'Kahf Beauty Advisor'}
+                      {latestConsultation?.baNameSnapshot || 'Beauty Advisor Wardah'}
                     </span>
                   </p>
                 </div>
@@ -808,7 +809,7 @@ export default function PersonalRecommendationsPage() {
                   >
                     <QrCode className="w-4 h-4 text-[#2C5C59]" />
                     <div>
-                      <p className="text-xs font-bold">QRIS Kahf</p>
+                      <p className="text-xs font-bold">QRIS Wardah</p>
                       <p className="text-[10px] text-gray-500">Scan Instant E-Wallet/Bank</p>
                     </div>
                   </button>
@@ -824,7 +825,7 @@ export default function PersonalRecommendationsPage() {
                   >
                     <Store className="w-4 h-4 text-[#2C5C59]" />
                     <div>
-                      <p className="text-xs font-bold">Counter Kahf</p>
+                      <p className="text-xs font-bold">Counter Wardah</p>
                       <p className="text-[10px] text-gray-500">Bayar Langsung di Kasir</p>
                     </div>
                   </button>
@@ -933,9 +934,9 @@ export default function PersonalRecommendationsPage() {
               <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 uppercase tracking-wider">
                 Pembelian Berhasil Terverifikasi
               </span>
-              <h3 className="text-xl font-bold text-[#2C5C59] mt-2">Terima Kasih, Kahf Bro!</h3>
+              <h3 className="text-xl font-bold text-[#2C5C59] mt-2">Terima Kasih, Cantik!</h3>
               <p className="text-xs text-gray-500 mt-1">
-                Produk rekomendasi Anda telah tercatat dan transaksi tersinkronisasi ke seluruh sistem Kahf.
+                Produk rekomendasi Anda telah tercatat dan transaksi tersinkronisasi ke seluruh sistem Wardah.
               </p>
             </div>
 
@@ -951,7 +952,7 @@ export default function PersonalRecommendationsPage() {
               <div className="flex justify-between text-xs pt-2 border-t border-[#6DB9B2]/20 font-bold text-amber-700">
                 <span className="flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  Poin Loyalty Kahf Didapat
+                  Poin Loyalty Wardah Didapat
                 </span>
                 <span>+{successData.pointsEarned} Poin</span>
               </div>
@@ -982,6 +983,8 @@ export default function PersonalRecommendationsPage() {
           </div>
         </div>
       )}
+
+      <PassportBottomNav activeTab="home" />
     </div>
   );
 }
