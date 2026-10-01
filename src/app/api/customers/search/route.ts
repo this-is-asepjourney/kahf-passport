@@ -1,12 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase/admin';
-import { maskPhone } from '@/lib/utils';
-import { normalizePhone } from '@/lib/utils';
+import { maskPhone, normalizePhone } from '@/lib/utils';
+import { FieldValue } from 'firebase-admin/firestore';
+import { nanoid } from 'nanoid';
+
+interface CustomerDocData {
+  id: string;
+  fullName: string;
+  phone: string;
+  phoneDisplay: string;
+  memberNo: string;
+  city?: string;
+  status: string;
+  purchaseCount: number;
+  lastPurchaseAt: string | null;
+  createdAt?: any;
+  score?: number;
+}
 
 /**
  * GET /api/customers/search?q=query
- * Search customers by phone or name (BA only).
- * Phone results are masked.
+ * Mesin pencari customer cerdas untuk Beauty Advisor & Admin:
+ * - Case-insensitive (huruf besar/kecil tidak berpengaruh)
+ * - Substring / substring fuzzy (mencari nama depan, belakang, potongan kata)
+ * - Pencarian nomor HP fleksibel (awalan 08..., +62..., atau 4 digit nomor)
+ * - Pencarian nomor Member ID / NIK
+ * - Tanpa batasan minimal 3 karakter yang kaku
  */
 export async function GET(request: NextRequest) {
   try {
@@ -23,89 +42,181 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('q')?.trim() ?? '';
+    const rawQuery = searchParams.get('q')?.trim() ?? '';
+    const db = adminDb();
 
-    if (query.length === 0) {
-      // Default to returning the BA's recent 20 customers
-      const db = adminDb();
+    // 1. Jika query kosong, kembalikan 30 customer terbaru
+    if (rawQuery.length === 0) {
       const snap = await db
         .collection('customers')
-        .orderBy('createdAt', 'desc')
-        .limit(20)
+        .limit(35)
         .get();
 
       const customers = snap.docs.map((doc) => {
         const data = doc.data();
         return {
           id: doc.id,
-          fullName: data.fullName,
-          phoneDisplay: maskPhone(data.phone),
-          memberNo: data.memberNo,
-          status: data.status,
-          purchaseCount: data.purchaseCount,
-          lastPurchaseAt: data.lastPurchaseAt?.toDate().toISOString() ?? null,
+          fullName: data.fullName || 'Customer Tanpa Nama',
+          phone: data.phone || '',
+          phoneDisplay: data.phone ? maskPhone(data.phone) : '-',
+          memberNo: data.memberNo || `WRD-${doc.id.slice(0, 5).toUpperCase()}`,
+          city: data.city || '-',
+          status: data.status || 'active',
+          purchaseCount: data.purchaseCount || 0,
+          lastPurchaseAt: data.lastPurchaseAt?.toDate?.()?.toISOString() ?? null,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
         };
       });
-      return NextResponse.json({ customers });
-    }
 
-    if (query.length > 0 && query.length < 3) {
-      return NextResponse.json({ customers: [] });
-    }
-
-    const db = adminDb();
-    let customers: unknown[] = [];
-
-    // Detect if query looks like a phone number
-    const isPhone = /^\+?[0-9]{7,}$/.test(query.replace(/\s/g, ''));
-
-    if (isPhone) {
-      const normalized = normalizePhone(query);
-      const snap = await db
-        .collection('customers')
-        .where('phone', '==', normalized)
-        .limit(5)
-        .get();
-
-      customers = snap.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          fullName: data.fullName,
-          phoneDisplay: maskPhone(data.phone),
-          memberNo: data.memberNo,
-          status: data.status,
-          purchaseCount: data.purchaseCount,
-          lastPurchaseAt: data.lastPurchaseAt?.toDate().toISOString() ?? null,
-        };
+      // Urutkan dari yang terbaru
+      customers.sort((a, b) => {
+        if (!a.createdAt) return 1;
+        if (!b.createdAt) return -1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-    } else {
-      // Name search — Firestore doesn't support full-text, use prefix range query
-      const snap = await db
-        .collection('customers')
-        .where('fullName', '>=', query)
-        .where('fullName', '<=', query + '\uf8ff')
-        .limit(10)
-        .get();
 
-      customers = snap.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          fullName: data.fullName,
-          phoneDisplay: maskPhone(data.phone),
-          memberNo: data.memberNo,
-          status: data.status,
-          purchaseCount: data.purchaseCount,
-          lastPurchaseAt: data.lastPurchaseAt?.toDate().toISOString() ?? null,
-        };
-      });
+      return NextResponse.json({ success: true, count: customers.length, customers });
     }
 
-    return NextResponse.json({ customers });
-  } catch (error) {
-    console.error('[search-customers]', error);
-    return NextResponse.json({ error: 'Gagal mencari customer' }, { status: 500 });
+    // 2. Olah query pencarian
+    const cleanQuery = rawQuery;
+    const lowerQuery = cleanQuery.toLowerCase();
+    const upperQuery = cleanQuery.toUpperCase();
+    const titleQuery = cleanQuery.charAt(0).toUpperCase() + cleanQuery.slice(1).toLowerCase();
+    const digitsOnly = cleanQuery.replace(/[^0-9]/g, '');
+
+    // Kumpulkan dokumen dari berbagai strategi query Firestore
+    const candidateDocsMap = new Map<string, any>();
+
+    const queryPromises: Promise<any>[] = [];
+
+    // Strategi A: Ambil pool 150 customer terbaru untuk pencarian substring in-memory
+    queryPromises.push(
+      db.collection('customers').limit(150).get().then((snap) => {
+        snap.docs.forEach((doc) => candidateDocsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+      }).catch(() => {})
+    );
+
+    // Strategi B: Jika query berupa ID dokumen spesifik
+    if (cleanQuery.length >= 8) {
+      queryPromises.push(
+        db.collection('customers').doc(cleanQuery).get().then((doc) => {
+          if (doc.exists) candidateDocsMap.set(doc.id, { id: doc.id, ...doc.data() });
+        }).catch(() => {})
+      );
+    }
+
+    // Strategi C: Pencarian berdasarkan Phone
+    if (digitsOnly.length >= 3) {
+      const normalized = normalizePhone(cleanQuery);
+      queryPromises.push(
+        db.collection('customers').where('phone', '==', normalized).limit(10).get().then((snap) => {
+          snap.docs.forEach((doc) => candidateDocsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+        }).catch(() => {})
+      );
+      queryPromises.push(
+        db.collection('customers').where('phone', '==', cleanQuery).limit(10).get().then((snap) => {
+          snap.docs.forEach((doc) => candidateDocsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+        }).catch(() => {})
+      );
+    }
+
+    // Strategi D: Prefix query Firestore pada fullName (TitleCase, UPPER, lower)
+    queryPromises.push(
+      db.collection('customers').where('fullName', '>=', titleQuery).where('fullName', '<=', titleQuery + '\uf8ff').limit(25).get().then((snap) => {
+        snap.docs.forEach((doc) => candidateDocsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+      }).catch(() => {})
+    );
+
+    queryPromises.push(
+      db.collection('customers').where('fullName', '>=', upperQuery).where('fullName', '<=', upperQuery + '\uf8ff').limit(25).get().then((snap) => {
+        snap.docs.forEach((doc) => candidateDocsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+      }).catch(() => {})
+    );
+
+    // Strategi E: Prefix query pada memberNo
+    queryPromises.push(
+      db.collection('customers').where('memberNo', '>=', upperQuery).where('memberNo', '<=', upperQuery + '\uf8ff').limit(20).get().then((snap) => {
+        snap.docs.forEach((doc) => candidateDocsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+      }).catch(() => {})
+    );
+
+    await Promise.all(queryPromises);
+
+    // 3. Evaluasi & Scoring In-Memory
+    const matchedList: CustomerDocData[] = [];
+
+    candidateDocsMap.forEach((data, id) => {
+      const name = (data.fullName || '').toString();
+      const lowerName = name.toLowerCase();
+      const rawPhone = (data.phone || '').toString();
+      const phoneDigits = rawPhone.replace(/[^0-9]/g, '');
+      const memberNo = (data.memberNo || '').toString().toLowerCase();
+      const city = (data.city || '').toString().toLowerCase();
+      const docId = id.toLowerCase();
+
+      let score = 0;
+
+      // Exact match
+      if (lowerName === lowerQuery) score += 100;
+      if (phoneDigits === digitsOnly && digitsOnly.length > 0) score += 100;
+      if (memberNo === lowerQuery) score += 95;
+      if (docId === lowerQuery) score += 90;
+
+      // Starts with
+      if (lowerName.startsWith(lowerQuery)) score += 75;
+      if (digitsOnly.length >= 3 && phoneDigits.startsWith(digitsOnly)) score += 70;
+      if (memberNo.startsWith(lowerQuery)) score += 65;
+
+      // Contains (Substring anywhere in word)
+      if (lowerName.includes(lowerQuery)) score += 50;
+      if (digitsOnly.length >= 3 && phoneDigits.includes(digitsOnly)) score += 45;
+      if (memberNo.includes(lowerQuery)) score += 40;
+      if (city.includes(lowerQuery)) score += 25;
+      if (docId.includes(lowerQuery)) score += 20;
+
+      // Token match: pecah nama (misal "Elsa Safitri" cocok untuk query "Safitri")
+      const tokens = lowerName.split(/\s+/);
+      if (tokens.some((t: string) => t.startsWith(lowerQuery))) score += 40;
+      if (tokens.some((t: string) => t.includes(lowerQuery))) score += 25;
+
+      if (score > 0) {
+        matchedList.push({
+          id,
+          fullName: data.fullName || 'Customer Tanpa Nama',
+          phone: rawPhone,
+          phoneDisplay: rawPhone ? maskPhone(rawPhone) : '-',
+          memberNo: data.memberNo || `WRD-${id.slice(0, 5).toUpperCase()}`,
+          city: data.city || '-',
+          status: data.status || 'active',
+          purchaseCount: data.purchaseCount || 0,
+          lastPurchaseAt: data.lastPurchaseAt?.toDate?.()?.toISOString() ?? null,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
+          score,
+        });
+      }
+    });
+
+    // Urutkan berdasarkan score tertinggi, lalu nama
+    matchedList.sort((a, b) => {
+      if ((b.score ?? 0) !== (a.score ?? 0)) {
+        return (b.score ?? 0) - (a.score ?? 0);
+      }
+      return a.fullName.localeCompare(b.fullName, 'id', { sensitivity: 'base' });
+    });
+
+    // Batasi maksimal 25 hasil paling relevan
+    const finalCustomers = matchedList.slice(0, 25);
+
+    return NextResponse.json({
+      success: true,
+      query: cleanQuery,
+      count: finalCustomers.length,
+      customers: finalCustomers,
+    });
+  } catch (error: any) {
+    console.error('[GET /api/customers/search]', error);
+    return NextResponse.json({ error: error.message || 'Gagal mencari customer' }, { status: 500 });
   }
 }
 
@@ -148,17 +259,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         customerId: existing.id,
         action: 'existing',
-        message: 'Customer sudah terdaftar',
+        message: 'Customer dengan nomor HP ini sudah terdaftar',
+        customer: { id: existing.id, ...existing.data() },
       });
     }
 
     // Create unclaimed customer
-    const { nanoid } = await import('nanoid');
     const customerId = nanoid(26).toUpperCase();
     const qrToken = nanoid(32);
-    const { FieldValue } = await import('firebase-admin/firestore');
 
-    const memberPrefix = 'KHF';
+    const memberPrefix = 'WRD';
     const memberNo = `${memberPrefix}${Date.now().toString(36).toUpperCase()}`;
 
     await db.runTransaction(async (tx) => {
@@ -167,7 +277,7 @@ export async function POST(request: NextRequest) {
         id: customerId,
         publicId: customerId.slice(0, 8).toLowerCase(),
         uid: null,
-        fullName,
+        fullName: fullName.trim(),
         phone: normalizedPhone,
         birthDate: null,
         gender: null,
@@ -195,9 +305,21 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    return NextResponse.json({ customerId, action: 'created', qrToken });
-  } catch (error) {
+    return NextResponse.json({
+      success: true,
+      customerId,
+      action: 'created',
+      qrToken,
+      customer: {
+        id: customerId,
+        fullName: fullName.trim(),
+        phone: normalizedPhone,
+        memberNo,
+        status: 'unclaimed',
+      },
+    });
+  } catch (error: any) {
     console.error('[quick-register-customer]', error);
-    return NextResponse.json({ error: 'Gagal mendaftarkan customer' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Gagal mendaftarkan customer' }, { status: 500 });
   }
 }

@@ -1,8 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import Link from 'next/link';
 import { doc, getDoc, collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
@@ -28,8 +28,24 @@ import {
 } from 'lucide-react';
 
 export default function BaScanAndBarcodePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-4 border-[#E2F0EF] border-t-[#277A73] animate-spin" />
+        </div>
+      }
+    >
+      <BaScanAndBarcodeContent />
+    </Suspense>
+  );
+}
+
+function BaScanAndBarcodeContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const paramCustomerId = searchParams.get('customerId') || '';
 
   // Mode: 'generate' (BA selects customer and shows barcode) vs 'camera' (BA scans QR)
   const [activeTab, setActiveTab] = useState<'generate' | 'camera'>('generate');
@@ -88,6 +104,14 @@ export default function BaScanAndBarcodePage() {
         if (prods.length > 0) {
           setSelectedProductId(prods[0].id);
         }
+
+        // Auto-select customer if customerId query param is provided
+        if (paramCustomerId) {
+          const directDoc = await getDoc(doc(db, 'customers', paramCustomerId));
+          if (directDoc.exists()) {
+            selectCustomer({ id: directDoc.id, ...directDoc.data() } as Customer);
+          }
+        }
       } catch (err) {
         console.error('Failed to load initial data:', err);
       }
@@ -96,7 +120,7 @@ export default function BaScanAndBarcodePage() {
     if (user) {
       initData();
     }
-  }, [user]);
+  }, [user, paramCustomerId]);
 
   // Load purchases when a customer is selected
   const loadCustomerPurchases = useCallback(async (customerId: string) => {
@@ -119,26 +143,22 @@ export default function BaScanAndBarcodePage() {
     }
   }, []);
 
-  // Handle Search
+  // Handle Search using unified intelligent customer search API
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const qText = searchQuery.trim().toLowerCase();
+    const qText = searchQuery.trim();
     if (!qText) return;
 
     setSearching(true);
     setErrorMsg(null);
 
     try {
-      // Search by phone, memberNo, or fullName
-      const snap = await getDocs(query(collection(db, 'customers'), limit(25)));
-      const matched = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() } as Customer))
-        .filter(
-          (c) =>
-            c.phone?.toLowerCase().includes(qText) ||
-            c.fullName?.toLowerCase().includes(qText) ||
-            c.memberNo?.toLowerCase().includes(qText)
-        );
+      const idToken = await auth.currentUser?.getIdToken();
+      const res = await fetch(`/api/customers/search?q=${encodeURIComponent(qText)}`, {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json();
+      const matched = (data.customers || []) as Customer[];
 
       setSearchResults(matched);
       if (matched.length === 1) {
