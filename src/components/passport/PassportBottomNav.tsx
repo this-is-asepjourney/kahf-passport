@@ -68,3 +68,5 @@ export function PassportBottomNav({ activeTab = 'home' }: PassportBottomNavProps
     </div>
   );
 }
+
+export default PassportBottomNav;

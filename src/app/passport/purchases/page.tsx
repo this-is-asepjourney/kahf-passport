@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -12,6 +12,20 @@ import { PassportBottomNav } from '@/components/passport/PassportBottomNav';
 import { ArrowLeft, CheckCircle2, ShoppingBag, ChevronDown, Sparkles } from 'lucide-react';
 
 export default function PurchasesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-white">
+          <div className="w-8 h-8 rounded-full border-4 border-[#E2F0EF] border-t-[#277A73] animate-spin" />
+        </div>
+      }
+    >
+      <PurchasesContent />
+    </Suspense>
+  );
+}
+
+function PurchasesContent() {
   const { user, customer, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
