@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -46,6 +46,8 @@ function PurchasesContent() {
     tier?: string;
   } | null>(null);
 
+  const fetchedTargetIdRef = useRef<string>('');
+
   useEffect(() => {
     const targetCustomerId = queryC || customer?.id;
 
@@ -59,6 +61,11 @@ function PurchasesContent() {
       if (!loading) setDataLoading(false);
       return;
     }
+
+    if (fetchedTargetIdRef.current === targetCustomerId) {
+      return;
+    }
+    fetchedTargetIdRef.current = targetCustomerId;
 
     const loadPurchases = async () => {
       try {
