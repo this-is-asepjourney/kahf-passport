@@ -46,34 +46,33 @@ export default function AdminBaPage() {
   const loadData = async () => {
     setDataLoading(true);
     try {
-      // 1. Fetch BA profiles
-      const baProfilesSnap = await getDocs(collection(db, 'baProfiles'));
+      // Fetch all required data in parallel for zero delay
+      const [baProfilesSnap, usersSnap, storesSnap, purchasesSnap] = await Promise.all([
+        getDocs(collection(db, 'baProfiles')),
+        getDocs(query(collection(db, 'users'), where('role', '==', 'ba'))),
+        getDocs(collection(db, 'stores')),
+        getDocs(collection(db, 'purchases')),
+      ]);
+
       const profiles = baProfilesSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
       setRawProfiles(profiles);
 
-      // 2. Fetch users to get BA names
-      const usersSnap = await getDocs(
-        query(collection(db, 'users'), where('role', '==', 'ba'))
-      );
       const userMap = new Map<string, string>();
       usersSnap.docs.forEach(d => {
         const u = d.data();
         userMap.set(d.id, u.name || u.displayName || u.email || d.id);
       });
 
-      // 3. Fetch Stores
-      const storesSnap = await getDocs(collection(db, 'stores'));
       const stores = storesSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Store[];
       setRawStores(stores);
 
-      // 4. Fetch Purchases
-      const purchasesSnap = await getDocs(collection(db, 'purchases'));
       const purchases = purchasesSnap.docs.map(d => ({
         id: d.id,
         ...d.data(),
         purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
       })) as Purchase[];
       setRawPurchases(purchases);
+
     } catch (err) {
       console.error('Failed to load BA performance data:', err);
     } finally {

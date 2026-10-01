@@ -40,12 +40,17 @@ export default function RegionalReportPage() {
   const loadData = async () => {
     setDataLoading(true);
     try {
-      // 1. Fetch all regions
-      const regionsSnap = await getDocs(collection(db, 'regions'));
+      // Fetch all collections in parallel for zero delay and maximum speed
+      const [regionsSnap, storesSnap, baSnap, custSnap, purchSnap] = await Promise.all([
+        getDocs(collection(db, 'regions')),
+        getDocs(collection(db, 'stores')),
+        getDocs(collection(db, 'baProfiles')),
+        getDocs(collection(db, 'customers')),
+        getDocs(collection(db, 'purchases')),
+      ]);
+
       const regions = regionsSnap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
 
-      // 2. Fetch all stores
-      const storesSnap = await getDocs(collection(db, 'stores'));
       const stores = storesSnap.docs.map(doc => ({
         id: doc.id,
         regionId: doc.data().regionId as string,
@@ -58,16 +63,12 @@ export default function RegionalReportPage() {
         if (s.regionId) storeRegionMap.set(s.id, s.regionId);
       });
 
-      // 3. Fetch BA profiles
-      const baSnap = await getDocs(collection(db, 'baProfiles'));
       const baList = baSnap.docs.map(doc => ({
         id: doc.id,
         storeId: doc.data().storeId as string,
         regionId: doc.data().regionId as string | undefined,
       }));
 
-      // 4. Fetch Customers
-      const custSnap = await getDocs(collection(db, 'customers'));
       const custList = custSnap.docs.map(doc => ({
         id: doc.id,
         regionId: doc.data().regionId as string | undefined,
@@ -75,8 +76,6 @@ export default function RegionalReportPage() {
         createdAt: doc.data().createdAt as string | undefined,
       }));
 
-      // 5. Fetch Purchases
-      const purchSnap = await getDocs(collection(db, 'purchases'));
       const purchList = purchSnap.docs.map(doc => ({
         id: doc.id,
         regionId: doc.data().regionId as string | undefined,
@@ -85,6 +84,7 @@ export default function RegionalReportPage() {
         status: doc.data().status as string,
         purchasedAt: doc.data().purchasedAt?.toDate?.()?.toISOString() ?? doc.data().purchasedAt,
       }));
+
 
       // Date filtering helper
       const now = new Date();

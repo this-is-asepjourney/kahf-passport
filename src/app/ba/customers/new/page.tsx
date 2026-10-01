@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { quickRegisterCustomerSchema, type QuickRegisterCustomerFormValues } from '@/lib/validators/schemas';
+import { auth } from '@/lib/firebase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -20,8 +21,8 @@ export default function BaNewCustomerPage() {
     setLoading(true);
     setError('');
     try {
-      const { getAuth } = await import('firebase/auth');
-      const idToken = await getAuth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
+
 
       const res = await fetch('/api/customers/search', {
         method: 'POST',

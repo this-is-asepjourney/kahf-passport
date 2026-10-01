@@ -52,35 +52,29 @@ export default function AdminDashboardPage() {
   const loadDashboardData = async () => {
     setDataLoading(true);
     try {
-      // 1. Fetch Customers
-      const custSnap = await getDocs(collection(db, 'customers'));
-      const custList = custSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[];
-      setCustomers(custList);
+      // Fetch all collections in parallel for maximum throughput and zero delay
+      const [custSnap, purchSnap, prodSnap, consSnap, regSnap] = await Promise.all([
+        getDocs(collection(db, 'customers')),
+        getDocs(query(collection(db, 'purchases'), orderBy('purchasedAt', 'desc'), limit(500))),
+        getDocs(collection(db, 'products')),
+        getDocs(collection(db, 'consultations')),
+        getDocs(collection(db, 'regions')),
+      ]);
 
-      // 2. Fetch Purchases (valid transactions)
-      const purchSnap = await getDocs(
-        query(collection(db, 'purchases'), orderBy('purchasedAt', 'desc'), limit(500))
-      );
+      const custList = custSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[];
       const purchList = purchSnap.docs.map(d => ({
         id: d.id,
         ...d.data(),
         purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
       })) as Purchase[];
-      setPurchases(purchList);
-
-      // 3. Fetch Products
-      const prodSnap = await getDocs(collection(db, 'products'));
       const prodList = prodSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Product[];
-      setProducts(prodList);
-
-      // 4. Fetch Consultations
-      const consSnap = await getDocs(collection(db, 'consultations'));
       const consList = consSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Consultation[];
-      setConsultations(consList);
-
-      // 5. Fetch Regions
-      const regSnap = await getDocs(collection(db, 'regions'));
       const regList = regSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Region[];
+
+      setCustomers(custList);
+      setPurchases(purchList);
+      setProducts(prodList);
+      setConsultations(consList);
       setRegions(regList);
     } catch (err) {
       console.error('Error loading admin dashboard data:', err);
@@ -88,6 +82,7 @@ export default function AdminDashboardPage() {
       setDataLoading(false);
     }
   };
+
 
   // Filtered dataset
   const filteredCustomers = useMemo(() => {

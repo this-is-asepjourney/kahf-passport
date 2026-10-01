@@ -1,47 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { useState } from 'react';
+import { auth } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import type { Customer } from '@/types';
 import Link from 'next/link';
- // Wait, let's just use standard text if lucide-react isn't installed. I will use standard SVG.
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://Kahf.app';
 
 export default function QrPage() {
-  const { user, loading } = useAuth();
+  const { user, customer, setCustomer, loading } = useAuth();
   const router = useRouter();
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [dataLoading, setDataLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
 
-  useEffect(() => {
-    const loadCustomer = async () => {
-      if (!user) return;
-      try {
-        const q = query(collection(db, 'customers'), where('uid', '==', user.uid));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          setCustomer({ id: snap.docs[0].id, ...snap.docs[0].data() } as Customer);
-        }
-      } finally {
-        setDataLoading(false);
-      }
-    };
-
-    if (!loading && !user) { router.replace('/login'); return; }
-    if (!loading && user) loadCustomer();
-  }, [user, loading, router]);
+  if (!loading && !user) {
+    router.replace('/login');
+    return null;
+  }
 
   const handleRegenerate = async () => {
     if (!customer) return;
     setRegenerating(true);
     try {
-      const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch('/api/qr', {
         method: 'PUT',
         headers: {
@@ -59,13 +41,14 @@ export default function QrPage() {
     }
   };
 
-  if (loading || dataLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="w-8 h-8 rounded-full border-4 border-[#E8C5C8] border-t-[#6DB9B2] animate-spin" />
       </div>
     );
   }
+
 
   const qrUrl = customer ? `${APP_URL}/p/${customer.qrTokenId}` : '';
 

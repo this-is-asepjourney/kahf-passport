@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { auth } from '@/lib/firebase/client';
 import Link from 'next/link';
 
 export default function AdminUsersPage() {
@@ -20,8 +21,8 @@ export default function AdminUsersPage() {
     setError('');
     setMessage('');
     try {
-      const { getAuth } = await import('firebase/auth');
-      const idToken = await getAuth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
+
 
       const res = await fetch('/api/admin/set-role', {
         method: 'POST',

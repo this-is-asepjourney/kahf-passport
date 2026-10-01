@@ -10,20 +10,19 @@ import Link from 'next/link';
 import { formatIDR, formatDateTime } from '@/lib/utils';
 
 export default function PurchasesPage() {
-  const { user, loading } = useAuth();
+  const { user, customer, loading } = useAuth();
   const router = useRouter();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!user) return;
+    const loadPurchases = async () => {
+      const cId = customer?.id;
+      if (!cId) {
+        setDataLoading(false);
+        return;
+      }
       try {
-        const customersQ = query(collection(db, 'customers'), where('uid', '==', user.uid));
-        const custSnap = await getDocs(customersQ);
-        if (custSnap.empty) return;
-        const cId = custSnap.docs[0].id;
-
         const purchasesQ = query(
           collection(db, 'purchases'),
           where('customerId', '==', cId),
@@ -44,8 +43,10 @@ export default function PurchasesPage() {
     };
 
     if (!loading && !user) { router.replace('/login'); return; }
-    if (!loading && user) loadData();
-  }, [user, loading, router]);
+    if (customer?.id) loadPurchases();
+    else if (!loading) setDataLoading(false);
+  }, [user, customer?.id, loading, router]);
+
 
   if (loading || dataLoading) {
     return (

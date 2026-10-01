@@ -1,6 +1,12 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  getFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  type Firestore,
+} from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -16,7 +22,24 @@ const firebaseConfig = {
 // Singleton: prevent multiple initializations in Next.js HMR
 const app: FirebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth: Auth = getAuth(app);
-const db: Firestore = getFirestore(app);
+
+// Initialize Firestore with IndexedDB multi-tab caching for instantaneous 0-delay client reads
+let db: Firestore;
+try {
+  if (typeof window !== 'undefined') {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  } else {
+    db = getFirestore(app);
+  }
+} catch {
+  db = getFirestore(app);
+}
+
 const storage: FirebaseStorage = getStorage(app);
 
 export { app, auth, db, storage };
+

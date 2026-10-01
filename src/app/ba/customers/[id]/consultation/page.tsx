@@ -1,9 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { auth, db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
+
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import type { Customer, Product, SkinType, SkinProfile } from '@/types';
@@ -95,8 +96,9 @@ export default function BaConsultationPage() {
     if (concerns.length === 0) { alert('Pilih minimal 1 concern kulit'); return; }
     setSubmitting(true);
     try {
-      const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch('/api/consultations', {
+
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ customerId, skinType, concerns, notes, recommendedProducts: selectedProducts }),

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { auth, db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -33,7 +33,7 @@ function getConcernIcon(concern: string): string {
 }
 
 export default function SkinProfilePage() {
-  const { user, loading } = useAuth();
+  const { user, customer, loading } = useAuth();
   const router = useRouter();
   const [skinProfile, setSkinProfile] = useState<SkinProfile | null>(null);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -50,23 +50,29 @@ export default function SkinProfilePage() {
     if (!loading && !user) { router.replace('/login'); return; }
 
     const loadData = async () => {
-      if (!user) return;
+      const cId = customer?.id;
+      if (!cId) {
+        setDataLoading(false);
+        return;
+      }
       try {
-        // Find customer
-        const custQ = query(collection(db, 'customers'), where('uid', '==', user.uid));
-        const custSnap = await getDocs(custQ);
-        if (custSnap.empty) return;
-        const cId = custSnap.docs[0].id;
+        const consultQ = query(
+          collection(db, 'consultations'),
+          where('customerId', '==', cId),
+          orderBy('createdAt', 'desc')
+        );
 
-        // Get skin profile
-        const profileDoc = await getDoc(doc(db, 'skinProfiles', cId));
+        // Fetch skin profile and consultations concurrently
+        const [profileDoc, consultSnap] = await Promise.all([
+          getDoc(doc(db, 'skinProfiles', cId)),
+          getDocs(consultQ),
+        ]);
+
         if (profileDoc.exists()) {
           const profile = { id: profileDoc.id, ...profileDoc.data() } as SkinProfile;
           setSkinProfile(profile);
-          // Pre-fill edit form with existing data
           setQSkinType(profile.skinType);
           setQConcerns(profile.concerns ?? []);
-          // Get BA name who last updated
           if (profile.updatedByBaId) {
             try {
               const baSnap = await getDocs(query(collection(db, 'baProfiles'), where('uid', '==', profile.updatedByBaId)));
@@ -77,13 +83,6 @@ export default function SkinProfilePage() {
           }
         }
 
-        // Get consultations
-        const consultQ = query(
-          collection(db, 'consultations'),
-          where('customerId', '==', cId),
-          orderBy('createdAt', 'desc')
-        );
-        const consultSnap = await getDocs(consultQ);
         setConsultations(consultSnap.docs.map(d => ({
           id: d.id, ...d.data(),
           createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? d.data().createdAt,
@@ -95,8 +94,10 @@ export default function SkinProfilePage() {
       }
     };
 
-    if (!loading && user) loadData();
-  }, [user, loading, router]);
+    if (customer?.id) loadData();
+    else if (!loading) setDataLoading(false);
+  }, [user, customer?.id, loading, router]);
+
 
   if (loading || dataLoading) {
     return (
@@ -114,9 +115,9 @@ export default function SkinProfilePage() {
     if (!user) return;
     setIsSubmitting(true);
     try {
-      const { getAuth } = await import('firebase/auth');
-      const idToken = await getAuth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch('/api/customers/skin-profile', {
+
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -15,7 +15,7 @@ import {
   serverTimestamp,
   updateDoc,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { auth, db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -192,8 +192,9 @@ export default function BaCustomerDetailPage() {
     setSuccess('');
 
     try {
-      const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch('/api/purchases', {
+
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,8 +245,9 @@ export default function BaCustomerDetailPage() {
     if (!reason) return;
 
     try {
-      const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch('/api/purchases/void', {
+
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { collection, query, where, orderBy, getDocs, doc, getDoc, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { auth, db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -20,7 +20,7 @@ const TIER_LABELS: Record<LoyaltyTier, string> = {
 };
 
 export default function LoyaltyPage() {
-  const { user, loading } = useAuth();
+  const { user, customer, loading } = useAuth();
   const router = useRouter();
   const [account, setAccount] = useState<LoyaltyAccount | null>(null);
   const [ledger, setLedger] = useState<LoyaltyLedger[]>([]);
@@ -31,54 +31,56 @@ export default function LoyaltyPage() {
   const [tab, setTab] = useState<'rewards' | 'history'>('rewards');
 
   const loadData = useCallback(async () => {
-    if (!user) return;
+    const cId = customer?.id;
+    if (!cId) {
+      setDataLoading(false);
+      return;
+    }
+    setCustomerId(cId);
     try {
-      const custQ = query(collection(db, 'customers'), where('uid', '==', user.uid));
-      const custSnap = await getDocs(custQ);
-      if (custSnap.empty) return;
-      const cId = custSnap.docs[0].id;
-      setCustomerId(cId);
-
-      // Get loyalty account
-      const accountDoc = await getDoc(doc(db, 'loyaltyAccounts', cId));
-      if (accountDoc.exists()) {
-        setAccount({ id: accountDoc.id, ...accountDoc.data() } as LoyaltyAccount);
-      }
-
-      // Get ledger
       const ledgerQ = query(
         collection(db, 'loyaltyLedgers'),
         where('customerId', '==', cId),
         orderBy('createdAt', 'desc'),
         limit(20)
       );
-      const ledgerSnap = await getDocs(ledgerQ);
+      const rewardsQ = query(collection(db, 'rewards'), where('isActive', '==', true));
+
+      // Fetch loyalty account, ledger, and rewards in parallel for zero delay
+      const [accountDoc, ledgerSnap, rewardsSnap] = await Promise.all([
+        getDoc(doc(db, 'loyaltyAccounts', cId)),
+        getDocs(ledgerQ),
+        getDocs(rewardsQ),
+      ]);
+
+      if (accountDoc.exists()) {
+        setAccount({ id: accountDoc.id, ...accountDoc.data() } as LoyaltyAccount);
+      }
+
       setLedger(ledgerSnap.docs.map(d => ({
         id: d.id, ...d.data(),
         createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? d.data().createdAt,
       })) as LoyaltyLedger[]);
 
-      // Get available rewards
-      const rewardsQ = query(collection(db, 'rewards'), where('isActive', '==', true));
-      const rewardsSnap = await getDocs(rewardsQ);
       setRewards(rewardsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Reward[]);
     } catch (err) {
       console.error(err);
     } finally {
       setDataLoading(false);
     }
-  }, [user]);
+  }, [customer?.id]);
 
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
-    if (!loading && user) loadData();
-  }, [user, loading, loadData, router]);
+    if (customer?.id) loadData();
+    else if (!loading) setDataLoading(false);
+  }, [user, customer?.id, loading, loadData, router]);
 
   const handleRedeem = async (rewardId: string) => {
     if (!customerId) return;
     setRedeeming(rewardId);
     try {
-      const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch('/api/loyalty/redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
@@ -95,6 +97,7 @@ export default function LoyaltyPage() {
       setRedeeming(null);
     }
   };
+
 
   if (loading || dataLoading) {
     return (

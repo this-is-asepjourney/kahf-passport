@@ -240,3 +240,28 @@
 .safe-top {
   padding-top: env(safe-area-inset-top, 0px);
 }
+
+/* ---- Instant Touch & Smooth Interaction (No Delay) ---- */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, rgba(226, 240, 239, 0.4) 25%, rgba(226, 240, 239, 0.8) 50%, rgba(226, 240, 239, 0.4) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+}

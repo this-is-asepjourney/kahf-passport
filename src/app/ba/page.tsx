@@ -61,75 +61,74 @@ export default function BaDashboardPage() {
 
     const loadData = async () => {
       if (!user?.storeId) return setDataLoading(false);
-    try {
-      // 1. Get Store Name
-      const storeDoc = await getDoc(doc(db, 'stores', user.storeId));
-      if (storeDoc.exists()) setStoreName(storeDoc.data()!.name);
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const summaryId = `${today}_${user.storeId}`;
 
-      // 2. Get Today's Sales
-      const today = new Date().toISOString().slice(0, 10);
-      const summaryId = `${today}_${user.storeId}`;
-      const summaryDoc = await getDoc(doc(db, 'dailySalesSummary', summaryId));
-      
-      let ordersToday = 0;
-      let totalSales = 0;
-      if (summaryDoc.exists()) {
-        const data = summaryDoc.data();
-        ordersToday = data.totalOrders ?? 0;
-        totalSales = data.totalSales ?? 0;
-      }
+        // Fetch store, daily summary, customers, and featured product concurrently
+        const [storeDoc, summaryDoc, customerDocsSnap, productsSnap] = await Promise.all([
+          getDoc(doc(db, 'stores', user.storeId)),
+          getDoc(doc(db, 'dailySalesSummary', summaryId)),
+          getDocs(query(collection(db, 'customers'))),
+          getDocs(query(collection(db, 'products'), where('isActive', '==', true), limit(1))),
+        ]);
 
-      // 3. Get Customers count (Globally, so BA can see self-registered customers)
-      const customerDocsSnap = await getDocs(query(collection(db, 'customers')));
-      const customerDocs = customerDocsSnap;
-      const totalCustomers = customerDocs.docs.length;
+        if (storeDoc.exists()) setStoreName(storeDoc.data()!.name);
 
-      // Repeat Purchase (purchaseCount > 1) calculated locally
-      let repeatCount = 0;
-      customerDocs.docs.forEach(doc => {
-        if ((doc.data().purchaseCount || 0) > 1) {
-          repeatCount++;
+        let ordersToday = 0;
+        let totalSales = 0;
+        if (summaryDoc.exists()) {
+          const data = summaryDoc.data();
+          ordersToday = data.totalOrders ?? 0;
+          totalSales = data.totalSales ?? 0;
         }
-      });
-      const repeatPurchaseRate = totalCustomers > 0 ? Math.round((repeatCount / totalCustomers) * 100) : 0;
 
-      // 4. Get Recent Customers
-      const allCustomers = customerDocs.docs.map(d => ({
-        id: d.id,
-        data: d.data(),
-        createdAt: d.data().createdAt ? d.data().createdAt.toDate() : new Date(0)
-      }));
-      
-      allCustomers.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      const recentList = allCustomers.slice(0, 5).map(d => ({
-        id: d.id,
-        fullName: d.data.fullName || 'Tanpa Nama',
-        lastPurchaseAt: d.data.lastPurchaseAt ? d.data.lastPurchaseAt.toDate().toISOString() : null,
-        status: d.data.status
-      }));
+        const totalCustomers = customerDocsSnap.docs.length;
 
-      // 5. Get Follow Ups
-      const followUpList: FollowUpItem[] = [];
-      const now = new Date();
-      customerDocs.docs.forEach(d => {
-        const data = d.data();
-        if (data.lastPurchaseAt) {
-          const lp = data.lastPurchaseAt.toDate();
-          const diffDays = Math.floor(Math.abs(now.getTime() - lp.getTime()) / (1000 * 60 * 60 * 24));
-          if (diffDays >= 25) {
-            followUpList.push({ id: d.id, fullName: data.fullName || 'Tanpa Nama', daysSincePurchase: diffDays });
+        // Repeat Purchase (purchaseCount > 1) calculated locally
+        let repeatCount = 0;
+        customerDocsSnap.docs.forEach(doc => {
+          if ((doc.data().purchaseCount || 0) > 1) {
+            repeatCount++;
           }
-        }
-      });
-      followUpList.sort((a, b) => b.daysSincePurchase - a.daysSincePurchase);
-      setFollowUps(followUpList.slice(0, 3));
+        });
+        const repeatPurchaseRate = totalCustomers > 0 ? Math.round((repeatCount / totalCustomers) * 100) : 0;
 
-      // 6. Get Featured Product (just grab one active product for recommendation)
-      const productsQuery = query(collection(db, 'products'), where('isActive', '==', true), limit(1));
-      const productsSnap = await getDocs(productsQuery);
-      if (!productsSnap.empty) {
-        setFeaturedProduct({ id: productsSnap.docs[0].id, ...productsSnap.docs[0].data() });
-      }
+        // 4. Get Recent Customers
+        const allCustomers = customerDocsSnap.docs.map(d => ({
+          id: d.id,
+          data: d.data(),
+          createdAt: d.data().createdAt ? d.data().createdAt.toDate() : new Date(0)
+        }));
+        
+        allCustomers.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const recentList = allCustomers.slice(0, 5).map(d => ({
+          id: d.id,
+          fullName: d.data.fullName || 'Tanpa Nama',
+          lastPurchaseAt: d.data.lastPurchaseAt ? d.data.lastPurchaseAt.toDate().toISOString() : null,
+          status: d.data.status
+        }));
+
+        // 5. Get Follow Ups
+        const followUpList: FollowUpItem[] = [];
+        const now = new Date();
+        customerDocsSnap.docs.forEach(d => {
+          const data = d.data();
+          if (data.lastPurchaseAt) {
+            const lp = data.lastPurchaseAt.toDate();
+            const diffDays = Math.floor(Math.abs(now.getTime() - lp.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays >= 25) {
+              followUpList.push({ id: d.id, fullName: data.fullName || 'Tanpa Nama', daysSincePurchase: diffDays });
+            }
+          }
+        });
+        followUpList.sort((a, b) => b.daysSincePurchase - a.daysSincePurchase);
+        setFollowUps(followUpList.slice(0, 3));
+
+        if (!productsSnap.empty) {
+          setFeaturedProduct({ id: productsSnap.docs[0].id, ...productsSnap.docs[0].data() });
+        }
+
 
       // Update State
       setStats({

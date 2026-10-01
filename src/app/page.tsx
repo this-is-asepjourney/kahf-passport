@@ -1,12 +1,22 @@
-import Link from 'next/link';
-import type { Metadata } from 'next';
+'use client';
 
-export const metadata: Metadata = {
-  title: 'Kahf Passport — Your Beauty Journey Starts Here',
-  description: 'Satu platform terintegrasi untuk mendukung layanan personal dan berkelanjutan.',
-};
+import { useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 export default function HomePage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) {
+      if (user.role === 'customer') router.replace('/passport');
+      else if (user.role === 'ba') router.replace('/ba');
+      else if (user.role?.includes('admin')) router.replace('/admin');
+    }
+  }, [user, loading, router]);
+
   return (
     <main className="min-h-screen flex flex-col bg-white relative overflow-hidden">
       {/* Background Shapes */}

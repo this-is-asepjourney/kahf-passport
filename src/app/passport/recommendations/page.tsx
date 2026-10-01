@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { auth, db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
+
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatIDR } from '@/lib/utils';
@@ -306,8 +307,9 @@ export default function PersonalRecommendationsPage() {
     setCheckoutError('');
 
     try {
-      const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) throw new Error('Sesi autentikasi berakhir. Silakan login kembali.');
+
 
       const payload = {
         items: cartItems.map((item) => ({

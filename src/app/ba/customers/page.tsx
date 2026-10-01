@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { auth } from '@/lib/firebase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -32,7 +33,7 @@ function CustomerSearchContent() {
     setLoading(true);
     setSearched(true);
     try {
-      const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch(`/api/customers/search?q=${encodeURIComponent(searchStr)}`, {
         headers: { Authorization: `Bearer ${idToken}` },
       });
@@ -42,6 +43,7 @@ function CustomerSearchContent() {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     if (initialQuery && initialQuery.length > 0 && initialQuery.length < 3) return;
