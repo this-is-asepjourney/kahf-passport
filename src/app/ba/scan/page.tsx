@@ -84,21 +84,19 @@ function BaScanAndBarcodeContent() {
   // Load purchases when a customer is selected
   const loadCustomerPurchases = useCallback(async (customerId: string) => {
     try {
-      const q = query(
-        collection(db, 'purchases'),
-        where('customerId', '==', customerId),
-        orderBy('purchasedAt', 'desc'),
-        limit(5)
-      );
-      const snap = await getDocs(q);
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-        purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
-      })) as Purchase[];
-      setCustomerPurchases(list);
+      const idToken = await auth.currentUser?.getIdToken();
+      const res = await fetch(`/api/purchases?customerId=${encodeURIComponent(customerId)}`, {
+        headers: idToken ? { Authorization: `Bearer ${idToken}` } : {},
+      });
+      const data = await res.json();
+      if (data.purchases) {
+        setCustomerPurchases(data.purchases);
+      }
+      if (data.customer) {
+        setSelectedCustomer((prev) => (prev && prev.id === customerId ? { ...prev, ...data.customer } : prev));
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error loading customer purchases:', err);
     }
   }, []);
 
@@ -238,7 +236,27 @@ function BaScanAndBarcodeContent() {
 
       setTransactionSuccess(true);
       setCartItems([]);
-      loadCustomerPurchases(selectedCustomer.id);
+
+      // Update selected customer state immediately
+      if (data.customer) {
+        setSelectedCustomer((prev) => (prev ? { ...prev, ...data.customer } : prev));
+      }
+
+      // Update recent customers in state to reflect purchase count and total spent
+      setRecentCustomers((prev) =>
+        prev.map((c) =>
+          c.id === selectedCustomer.id
+            ? {
+                ...c,
+                purchaseCount: (c.purchaseCount || 0) + 1,
+                totalSpent: (c.totalSpent || 0) + totalAmount,
+                lastPurchaseAt: new Date().toISOString(),
+              }
+            : c
+        )
+      );
+
+      await loadCustomerPurchases(selectedCustomer.id);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Terjadi kesalahan saat menyimpan pembelian';
       setErrorMsg(message);
@@ -346,7 +364,7 @@ function BaScanAndBarcodeContent() {
 
   const barcodeCustomerUrl = selectedCustomer
     ? typeof window !== 'undefined'
-      ? `${window.location.origin}/passport/purchases?c=${selectedCustomer.id}&scanned=true`
+      ? `${window.location.origin}/passport/purchases?c=${selectedCustomer.id}&scanned=true&v=${selectedCustomer.purchaseCount || 0}`
       : `${selectedCustomer.id}`
     : '';
 
@@ -638,8 +656,27 @@ function BaScanAndBarcodeContent() {
                       />
                     </div>
 
-                    <div className="p-3 bg-[#E8F6F4] rounded-2xl text-[11px] text-[#277A73] font-medium leading-relaxed">
-                      📱 <strong>Customer cukup buka menu &apos;Passport&apos;</strong> di HP mereka dan scan barcode ini untuk melihat riwayat belanja terbarunya.
+                    {/* Stats summary of current customer */}
+                    <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl text-xs border border-gray-100">
+                      <span className="text-gray-500 font-medium">Total Transaksi:</span>
+                      <span className="font-bold text-[#277A73]">
+                        {selectedCustomer.purchaseCount || 0}x ({formatIDR(selectedCustomer.totalSpent || 0)})
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-[#E8F6F4] rounded-2xl text-[11px] text-[#277A73] font-medium leading-relaxed space-y-1">
+                      <p>
+                        📱 <strong>Customer cukup buka menu &apos;Passport&apos;</strong> di HP mereka dan scan barcode ini untuk melihat riwayat belanja terbarunya.
+                      </p>
+                      <a
+                        href={barcodeCustomerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-bold underline text-[10px] mt-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Buka Riwayat Pelanggan (Preview Tampilan Customer)</span>
+                      </a>
                     </div>
 
                     {/* Customer Quick Purchases Summary */}

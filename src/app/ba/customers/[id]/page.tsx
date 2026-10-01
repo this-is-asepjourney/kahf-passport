@@ -1101,8 +1101,18 @@ export default function BaCustomerDetailPage() {
               />
             </div>
 
-            <div className="bg-[#E8F6F4] p-3 rounded-2xl text-[11px] text-[#277A73] font-medium leading-relaxed">
-              📱 <strong>Minta customer membuka menu &apos;Passport&apos;</strong> di HP mereka dan scan barcode ini untuk melihat riwayat belanja terbarunya.
+            <div className="bg-[#E8F6F4] p-3 rounded-2xl text-[11px] text-[#277A73] font-medium leading-relaxed space-y-1">
+              <p>
+                📱 <strong>Minta customer membuka menu &apos;Passport&apos;</strong> di HP mereka dan scan barcode ini untuk melihat riwayat belanja terbarunya.
+              </p>
+              <a
+                href={typeof window !== 'undefined' ? `${window.location.origin}/passport/purchases?c=${customer.id}&scanned=true` : '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-bold underline text-[10px] mt-1"
+              >
+                <span>Buka Riwayat Pelanggan (Preview Tampilan Customer)</span>
+              </a>
             </div>
 
             <button

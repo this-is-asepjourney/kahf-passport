@@ -12,6 +12,61 @@ import { nanoid } from 'nanoid';
  */
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const targetCustomerId = searchParams.get('customerId') || searchParams.get('c');
+    const db = adminDb();
+
+    // 1. Jika customerId diberikan (misal dari scan QR barcode oleh customer atau dari portal BA):
+    if (targetCustomerId) {
+      const custDoc = await db.collection('customers').doc(targetCustomerId).get();
+      if (!custDoc.exists) {
+        return NextResponse.json({ error: 'Customer tidak ditemukan' }, { status: 404 });
+      }
+
+      const custData = custDoc.data()!;
+
+      // Ambil transaksi untuk customer tersebut
+      const purchasesSnap = await db
+        .collection('purchases')
+        .where('customerId', '==', targetCustomerId)
+        .orderBy('purchasedAt', 'desc')
+        .limit(50)
+        .get();
+
+      const purchases = purchasesSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        purchasedAt: doc.data().purchasedAt?.toDate?.()?.toISOString() ?? doc.data().purchasedAt,
+      }));
+
+      // Ambil data loyalitas poin
+      const loyaltyDoc = await db.collection('loyaltyAccounts').doc(targetCustomerId).get();
+      const loyaltyData = loyaltyDoc.exists ? loyaltyDoc.data() : null;
+
+      return NextResponse.json({
+        success: true,
+        customer: {
+          id: custDoc.id,
+          fullName: custData.fullName || 'Customer Wardah',
+          memberNo: custData.memberNo || `WRD-${custDoc.id.slice(0, 5).toUpperCase()}`,
+          phone: custData.phone || '',
+          status: custData.status || 'active',
+          purchaseCount: custData.purchaseCount ?? purchases.length,
+          totalSpent: custData.totalSpent ?? 0,
+          lastPurchaseAt: custData.lastPurchaseAt?.toDate?.()?.toISOString() ?? null,
+        },
+        loyalty: loyaltyData
+          ? {
+              currentPoints: loyaltyData.currentPoints ?? 0,
+              totalEarnedPoints: loyaltyData.totalEarnedPoints ?? 0,
+              tier: loyaltyData.tier ?? 'bronze',
+            }
+          : { currentPoints: 0, totalEarnedPoints: 0, tier: 'bronze' },
+        purchases,
+      });
+    }
+
+    // 2. Jika tanpa query customerId, verifikasi token otentikasi
     const authorization = request.headers.get('Authorization');
     if (!authorization?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Tidak terautentikasi' }, { status: 401 });
@@ -19,7 +74,6 @@ export async function GET(request: NextRequest) {
 
     const idToken = authorization.split('Bearer ')[1];
     const decodedToken = await adminAuth().verifyIdToken(idToken);
-    const db = adminDb();
 
     if (decodedToken.role === 'customer') {
       const custSnap = await db
@@ -79,9 +133,10 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({ purchases });
-  } catch (error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Gagal mengambil data transaksi';
     console.error('[get-purchases]', error);
-    return NextResponse.json({ error: 'Gagal mengambil data transaksi' }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -360,6 +415,7 @@ export async function POST(request: NextRequest) {
       tx.set(purchaseRef, {
         id: purchaseId,
         customerId,
+        customerUid: customer.uid || null,
         customerNameSnapshot: customer.fullName || 'Customer Wardah',
         customerPhoneSnapshot: customer.phone || '',
         storeId: storeId || 'store_online',
@@ -492,7 +548,21 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 8. Audit Log
+      // 8. Notifikasi realtime ke akun customer (Beauty Passport)
+      const notifRef = db.collection('notifications').doc();
+      tx.set(notifRef, {
+        id: notifRef.id,
+        customerId,
+        customerUid: customer.uid || null,
+        title: 'Transaksi Counter Berhasil! 🛍️',
+        message: `Pembelian #${invoiceNo} senilai ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(totalAmount)} berhasil dicatat oleh ${baNameSnapshot || 'Beauty Advisor'}. Poin reward Anda bertambah +${pointsEarned} poin! ✨`,
+        type: 'purchase_update',
+        read: false,
+        actionUrl: `/passport/purchases?c=${customerId}&scanned=true`,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      // 9. Audit Log
       const auditRef = db.collection('auditLogs').doc();
       tx.set(auditRef, {
         userId: decodedToken.uid,
@@ -544,12 +614,20 @@ export async function POST(request: NextRequest) {
       totalAmount,
       itemsCount: resolvedItems.length,
       pointsEarned,
+      customer: {
+        id: customerId,
+        fullName: customer.fullName,
+        purchaseCount: (customer.purchaseCount ?? 0) + 1,
+        totalSpent: (customer.totalSpent ?? 0) + totalAmount,
+        lastPurchaseAt: new Date().toISOString(),
+      },
       message: 'Transaksi pembelian berhasil diproses dan disinkronkan ke seluruh sistem!',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Gagal memproses transaksi pembelian';
     console.error('[purchase-error]', error);
     return NextResponse.json(
-      { error: error?.message || 'Gagal memproses transaksi pembelian' },
+      { error: message },
       { status: 500 }
     );
   }

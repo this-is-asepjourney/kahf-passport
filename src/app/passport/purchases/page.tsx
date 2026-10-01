@@ -29,43 +29,62 @@ function PurchasesContent() {
   const { user, customer, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryC = searchParams.get('c') || searchParams.get('customerId') || searchParams.get('code');
   const isScanned = searchParams.get('scanned') === 'true';
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [showScanSuccessBanner, setShowScanSuccessBanner] = useState(isScanned);
+  const [scannedCustomer, setScannedCustomer] = useState<{
+    fullName?: string;
+    memberNo?: string;
+    purchaseCount?: number;
+    totalSpent?: number;
+  } | null>(null);
+  const [scannedLoyalty, setScannedLoyalty] = useState<{
+    currentPoints?: number;
+    tier?: string;
+  } | null>(null);
 
   useEffect(() => {
+    const targetCustomerId = queryC || customer?.id;
+
+    // Jika tidak ada parameter barcode dan user belum login, arahkan ke login
+    if (!queryC && !loading && !user) {
+      router.replace('/login');
+      return;
+    }
+
+    if (!targetCustomerId) {
+      if (!loading) setDataLoading(false);
+      return;
+    }
+
     const loadPurchases = async () => {
-      const cId = customer?.id;
-      if (!cId) {
-        setDataLoading(false);
-        return;
-      }
       try {
-        const purchasesQ = query(
-          collection(db, 'purchases'),
-          where('customerId', '==', cId),
-          orderBy('purchasedAt', 'desc')
-        );
-        const purchasesSnap = await getDocs(purchasesQ);
-        const allPurchases = purchasesSnap.docs.map(d => ({
-          id: d.id,
-          ...d.data(),
-          purchasedAt: d.data().purchasedAt?.toDate?.()?.toISOString() ?? d.data().purchasedAt,
-        })) as Purchase[];
-        setPurchases(allPurchases);
+        const idToken = await auth.currentUser?.getIdToken();
+        const res = await fetch(`/api/purchases?customerId=${encodeURIComponent(targetCustomerId)}`, {
+          headers: idToken ? { Authorization: `Bearer ${idToken}` } : {},
+        });
+        const data = await res.json();
+        if (data.purchases) {
+          setPurchases(data.purchases);
+        }
+        if (data.customer) {
+          setScannedCustomer(data.customer);
+        }
+        if (data.loyalty) {
+          setScannedLoyalty(data.loyalty);
+        }
       } catch (err) {
-        console.error(err);
+        console.error('Error fetching purchases:', err);
       } finally {
         setDataLoading(false);
       }
     };
 
-    if (!loading && !user) { router.replace('/login'); return; }
-    if (customer?.id) loadPurchases();
-    else if (!loading) setDataLoading(false);
-  }, [user, customer?.id, loading, router]);
+    loadPurchases();
+  }, [user, customer?.id, queryC, loading, router]);
 
   if (loading || dataLoading) {
     return (
@@ -75,7 +94,9 @@ function PurchasesContent() {
     );
   }
 
-  const validCount = purchases.filter(p => p.status === 'valid').length;
+  const validCount = purchases.filter((p) => p.status === 'valid').length;
+  const activeCustomerName = scannedCustomer?.fullName || customer?.fullName || 'Customer Wardah';
+  const activeMemberNo = scannedCustomer?.memberNo || customer?.memberNo || '-';
 
   return (
     <div className="min-h-screen bg-[#F8FBFB] flex flex-col relative pb-28">
@@ -118,6 +139,49 @@ function PurchasesContent() {
             >
               ✕
             </button>
+          </div>
+        )}
+
+        {/* Customer Passport Info Badge */}
+        <div className="bg-white rounded-3xl p-4.5 border border-[#277A73]/15 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-[#E8F6F4] text-[#277A73] flex items-center justify-center font-bold text-lg">
+              {activeCustomerName.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">{activeCustomerName}</p>
+              <p className="text-[11px] text-gray-500 font-mono">ID: {activeMemberNo}</p>
+            </div>
+          </div>
+          {scannedLoyalty && (
+            <div className="text-right">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#277A73] bg-[#E8F6F4] px-2.5 py-1 rounded-full">
+                <Sparkles className="w-3 h-3 text-amber-500" />
+                <span>{scannedLoyalty.currentPoints ?? 0} Poin</span>
+              </span>
+              <p className="text-[10px] text-gray-400 capitalize mt-0.5 font-medium">
+                {scannedLoyalty.tier ?? 'Bronze'} Member
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Unauthenticated / Unclaimed Customer Claim Banner */}
+        {!user && queryC && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
+            <p className="font-bold flex items-center gap-1.5">
+              <span>✨</span>
+              <span>Klaim Akun Beauty Passport Anda</span>
+            </p>
+            <p className="text-[11px] text-amber-800 leading-relaxed">
+              Transaksi counter di atas tercatat atas nama Anda. Masuk atau buat akun untuk menyimpan riwayat ini dan menukarkan poin reward Anda!
+            </p>
+            <Link
+              href="/login"
+              className="inline-block mt-1 px-4 py-2 bg-[#277A73] text-white font-bold text-xs rounded-xl shadow-xs hover:bg-[#1E6560] transition-colors"
+            >
+              Masuk / Daftarkan Akun
+            </Link>
           </div>
         )}
 

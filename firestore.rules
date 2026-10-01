@@ -68,7 +68,9 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         isAdmin() || 
         isBA() || 
-        resource.data.customerId == request.auth.uid
+        resource.data.customerUid == request.auth.uid ||
+        resource.data.customerId == request.auth.uid ||
+        request.auth.token.role == 'customer'
       );
       allow create: if isBA() || isAdmin();
       allow update: if isBA() || isAdmin();
