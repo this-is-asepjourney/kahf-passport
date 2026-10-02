@@ -25,18 +25,13 @@ import {
   Sparkles,
   Printer,
   Share2,
-  Clock,
   CreditCard,
   Banknote,
   Smartphone,
   Building,
   RotateCcw,
-  Check,
   ChevronDown,
-  X,
   Receipt,
-  FileText,
-  BadgePercent,
 } from 'lucide-react';
 
 interface CartItem {
@@ -106,7 +101,6 @@ function BaScanAndBarcodeContent() {
 
   // Submit and Void states
   const [isSubmittingPurchase, setIsSubmittingPurchase] = useState(false);
-  const [transactionSuccess, setTransactionSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Receipt Modal State
@@ -219,7 +213,6 @@ function BaScanAndBarcodeContent() {
       loadedCustomerIdRef.current = c.id;
       setSelectedCustomer(c);
       setCartItems([]);
-      setTransactionSuccess(false);
       setErrorMsg(null);
       setCustomInvoiceNo(`WRD-${Date.now().toString().slice(-6)}`);
       setCashTendered('');
@@ -377,7 +370,6 @@ function BaScanAndBarcodeContent() {
     setSearchQuery('');
     setSearchResults([]);
     setCartItems([]);
-    setTransactionSuccess(false);
     setErrorMsg(null);
   };
 
@@ -426,15 +418,6 @@ function BaScanAndBarcodeContent() {
     const updated = [...cartItems];
     updated[index].qty = newQty;
     updated[index].subtotal = newQty * updated[index].unitPrice;
-    setCartItems(updated);
-  };
-
-  // Adjust item unit price in cart (discounts / promos)
-  const handleUpdateItemPrice = (index: number, newPrice: number) => {
-    const updated = [...cartItems];
-    updated[index].unitPrice = Math.max(0, newPrice);
-    updated[index].subtotal = updated[index].qty * updated[index].unitPrice;
-    updated[index].isCustomPrice = true;
     setCartItems(updated);
   };
 
@@ -513,8 +496,6 @@ function BaScanAndBarcodeContent() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal menyimpan transaksi');
-
-      setTransactionSuccess(true);
 
       // Create snapshot object for receipt modal
       const savedPurchaseSnapshot: Purchase = {
@@ -752,7 +733,7 @@ function BaScanAndBarcodeContent() {
             </Link>
             <div>
               <h1 className="text-xl font-bold flex items-center gap-2">
-                <span>Kasir & Barcode Riwayat</span>
+                <span>Barcode</span>
                 <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-white/20">
                   Wardah Official
                 </span>
@@ -1264,19 +1245,21 @@ function BaScanAndBarcodeContent() {
                           Metode Pembayaran Kasir:
                         </label>
                         <div className="grid grid-cols-4 gap-1.5">
-                          {[
-                            { id: 'qris', label: 'QRIS', icon: Smartphone },
-                            { id: 'cash', label: 'Tunai', icon: Banknote },
-                            { id: 'debit', label: 'Debit', icon: CreditCard },
-                            { id: 'transfer', label: 'Transfer', icon: Building },
-                          ].map((m) => {
+                          {(
+                            [
+                              { id: 'qris', label: 'QRIS', icon: Smartphone },
+                              { id: 'cash', label: 'Tunai', icon: Banknote },
+                              { id: 'debit', label: 'Debit', icon: CreditCard },
+                              { id: 'transfer', label: 'Transfer', icon: Building },
+                            ] as const
+                          ).map((m) => {
                             const Icon = m.icon;
                             const isSelected = paymentMethod === m.id;
                             return (
                               <button
                                 key={m.id}
                                 type="button"
-                                onClick={() => setPaymentMethod(m.id as any)}
+                                onClick={() => setPaymentMethod(m.id)}
                                 className={`py-2 px-1 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all ${
                                   isSelected
                                     ? 'bg-[#277A73] text-white border-[#277A73] shadow-xs'
@@ -1431,7 +1414,7 @@ function BaScanAndBarcodeContent() {
               <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm text-center space-y-3 sticky top-6">
                 <div className="flex items-center justify-center gap-2">
                   <QrCode className="w-5 h-5 text-[#277A73]" />
-                  <h3 className="font-bold text-sm text-gray-900">Barcode Riwayat Customer</h3>
+                  <h3 className="font-bold text-sm text-gray-900">Barcode</h3>
                 </div>
 
                 {selectedCustomer ? (

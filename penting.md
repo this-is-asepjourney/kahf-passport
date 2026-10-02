@@ -12,10 +12,10 @@
 ## 2. Beauty Advisor (BA)
 - **Beranda (Dashboard)**: Sapaan "Halo, Beauty Advisor!", memantau statistik customer, omset penjualan, dan transaksi harian.
 - **Customer Database**: Pencarian cepat pelanggan, profil lengkap, riwayat belanja, dan analisa jenis kulit.
-- **Kasir & Barcode Riwayat (Scan Barcode)**:
+- **Barcode (Scan Barcode)**:
   - BA mencari/memilih customer yang sedang dilayani.
   - BA meng-update produk Wardah apa saja yang dibeli customer, kuantitas, dan total belanja.
-  - BA menampilkan **Barcode QR Riwayat Customer** di layar untuk dipindai oleh customer.
+  - BA menampilkan **Barcode** di layar untuk dipindai oleh customer.
   - Menyediakan juga kamera pemindai kartu customer jika diperlukan.
 - **Konsultasi Kulit**: Analisis tipe kulit, concern (masalah kulit), dan rekomendasi produk resmi dari BA.
 - **Rekomendasi Produk**: Katalog produk Wardah live-sync dengan filter tipe kulit dan direct WhatsApp share.

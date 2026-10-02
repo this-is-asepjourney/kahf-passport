@@ -531,7 +531,7 @@ export default function BaCustomerDetailPage() {
             className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#277A73] to-[#1E6560] text-white hover:opacity-95 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-2 shadow-md shadow-[#277A73]/25"
           >
             <QrCode className="w-4 h-4 text-white" />
-            <span>Tampilkan Barcode Riwayat Customer (Untuk di-Scan)</span>
+            <span>Tampilkan Barcode (Untuk di-Scan)</span>
           </button>
 
           {/* Update / Start Consultation Button */}
