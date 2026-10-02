@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import {
   doc,
   getDoc,
@@ -11,9 +11,6 @@ import {
   where,
   orderBy,
   getDocs,
-  addDoc,
-  serverTimestamp,
-  updateDoc,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/client';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -29,18 +26,13 @@ import {
   ShoppingBag,
   Sparkles,
   Calendar,
-  FileText,
   Plus,
-  Trash2,
   CheckCircle2,
-  Clock,
   ChevronRight,
   ShieldCheck,
   AlertCircle,
-  ExternalLink,
   Bell,
   Send,
-  MessageSquare,
   X,
   QrCode,
 } from 'lucide-react';
@@ -56,7 +48,6 @@ const SKIN_TYPE_DESCRIPTIONS: Record<string, string> = {
 export default function BaCustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const router = useRouter();
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -75,13 +66,18 @@ export default function BaCustomerDetailPage() {
   const [notifMessage, setNotifMessage] = useState('');
   const [notifType, setNotifType] = useState<'ba_message' | 'follow_up' | 'promo' | 'consultation'>('ba_message');
   const [notifSubmitting, setNotifSubmitting] = useState(false);
+  const [projectSplashUrl, setProjectSplashUrl] = useState('');
+
+  useEffect(() => {
+    setProjectSplashUrl(window.location.origin);
+  }, []);
 
   // Form for recording purchases
   const form = useForm<RecordPurchaseFormValues>({
     resolver: zodResolver(recordPurchaseSchema),
     defaultValues: {
-      invoiceNo: `INV-${Date.now().toString().slice(-6)}`,
-      purchasedAt: new Date().toISOString().slice(0, 16),
+      invoiceNo: '',
+      purchasedAt: '',
       items: [{ productId: '', qty: 1, unitPrice: 0 }],
     },
   });
@@ -156,7 +152,7 @@ export default function BaCustomerDetailPage() {
         ...d.data(),
       })) as Product[];
       setProducts(allProducts);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading customer details in parallel:', err);
       setError('Gagal memuat beberapa data profil.');
     } finally {
@@ -245,8 +241,8 @@ export default function BaCustomerDetailPage() {
         items: [{ productId: '', qty: 1, unitPrice: 0 }],
       });
       await loadData();
-    } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan saat menyimpan pembelian.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat menyimpan pembelian.');
     } finally {
       setSubmitting(false);
     }
@@ -312,8 +308,8 @@ export default function BaCustomerDetailPage() {
       setSuccess(`Notifikasi berhasil dikirim ke akun Wardah Passport ${customer.fullName}!`);
       setShowNotifModal(false);
       setNotifMessage('');
-    } catch (err: any) {
-      setError(err.message || 'Gagal mengirim notifikasi');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Gagal mengirim notifikasi');
     } finally {
       setNotifSubmitting(false);
     }
@@ -517,7 +513,14 @@ export default function BaCustomerDetailPage() {
           {/* Record Purchase Modal Trigger */}
           <button
             type="button"
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              form.reset({
+                invoiceNo: `INV-${Date.now().toString().slice(-6)}`,
+                purchasedAt: new Date().toISOString().slice(0, 16),
+                items: [{ productId: '', qty: 1, unitPrice: 0 }],
+              });
+              setShowForm(true);
+            }}
             className="w-full py-3.5 px-6 rounded-2xl bg-white border border-gray-200 text-gray-700 font-bold text-xs hover:bg-gray-50 transition-all duration-200 shadow-xs flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4 text-[#277A73]" />
@@ -1078,13 +1081,13 @@ export default function BaCustomerDetailPage() {
         </div>
       )}
 
-      {/* Modal Tampilkan Barcode Riwayat Customer untuk di-Scan */}
+      {/* Modal Tampilkan Barcode untuk di-Scan */}
       {showBarcodeModal && customer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center space-y-4">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
               <span className="text-[11px] font-bold text-[#277A73] bg-[#E8F6F4] px-2.5 py-0.5 rounded-full">
-                Barcode Riwayat Belanja
+                Barcode
               </span>
               <button
                 type="button"
@@ -1096,14 +1099,14 @@ export default function BaCustomerDetailPage() {
             </div>
 
             <div>
-              <h3 className="text-base font-bold text-gray-900">{customer.fullName}</h3>
-              <p className="text-xs text-gray-500 font-mono">Member ID: {customer.memberNo}</p>
+              <h3 className="text-base font-bold text-gray-900">Wardah Beauty Passport</h3>
+              <p className="text-xs text-gray-500">Scan untuk langsung menuju Splashscreen / Login</p>
             </div>
 
             {/* QR Code */}
             <div className="p-4 bg-white rounded-2xl border-2 border-[#277A73]/20 shadow-sm inline-block mx-auto">
               <QRCode
-                value={typeof window !== 'undefined' ? `${window.location.origin}/passport/purchases?c=${customer.id}&scanned=true` : `${customer.id}`}
+                value={projectSplashUrl || '/'}
                 size={200}
                 level="H"
                 fgColor="#277A73"
@@ -1112,15 +1115,15 @@ export default function BaCustomerDetailPage() {
 
             <div className="bg-[#E8F6F4] p-3 rounded-2xl text-[11px] text-[#277A73] font-medium leading-relaxed space-y-1">
               <p>
-                📱 <strong>Minta customer membuka menu &apos;Passport&apos;</strong> di HP mereka dan scan barcode ini untuk melihat riwayat belanja terbarunya.
+                📱 <strong>Minta customer scan barcode ini</strong> dengan kamera HP untuk langsung diarahkan ke halaman splashscreen & login Wardah Beauty Passport.
               </p>
               <a
-                href={typeof window !== 'undefined' ? `${window.location.origin}/passport/purchases?c=${customer.id}&scanned=true` : '#'}
+                href={projectSplashUrl || '/'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 font-bold underline text-[10px] mt-1"
               >
-                <span>Buka Riwayat Pelanggan (Preview Tampilan Customer)</span>
+                <span>Buka Splashscreen (Preview)</span>
               </a>
             </div>
 

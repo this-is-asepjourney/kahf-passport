@@ -13,10 +13,10 @@
 - **Beranda (Dashboard)**: Sapaan "Halo, Beauty Advisor!", memantau statistik customer, omset penjualan, dan transaksi harian.
 - **Customer Database**: Pencarian cepat pelanggan, profil lengkap, riwayat belanja, dan analisa jenis kulit.
 - **Barcode (Scan Barcode)**:
-  - BA mencari/memilih customer yang sedang dilayani.
-  - BA meng-update produk Wardah apa saja yang dibeli customer, kuantitas, dan total belanja.
-  - BA menampilkan **Barcode** di layar untuk dipindai oleh customer.
-  - Menyediakan juga kamera pemindai kartu customer jika diperlukan.
+  - BA menampilkan **Barcode** di web BA untuk dipindai oleh customer di counter.
+  - Barcode / QR Code berisi URL project yang langsung mengarahkan (redirect) customer ke halaman splashscreen & login Wardah Beauty Passport saat di-scan menggunakan kamera smartphone.
+  - BA juga dapat mencari/memilih customer yang sedang dilayani untuk mencatat/meng-update produk Wardah apa saja yang dibeli customer, kuantitas, dan total belanja.
+  - Menyediakan juga opsi kamera pemindai kartu customer jika diperlukan.
 - **Konsultasi Kulit**: Analisis tipe kulit, concern (masalah kulit), dan rekomendasi produk resmi dari BA.
 - **Rekomendasi Produk**: Katalog produk Wardah live-sync dengan filter tipe kulit dan direct WhatsApp share.
 - **Follow Up**: Pengingat otomatis untuk pelanggan > 25 hari untuk repeat order via pesan aplikasi atau WhatsApp.
@@ -33,5 +33,5 @@
     4. **Loyalty & Reward**: Kumpulkan poin dan tukarkan dengan produk Wardah gratis.
     5. **Favorite Products**: Produk favorit yang disimpan pelanggan.
   - **Beauty Journey Card**: "Kulit lebih sehat, percaya diri setiap hari bersama Wardah 💙"
-  - **Scan Barcode BA**: Kamera scanner cepat untuk memindai barcode yang ditampilkan oleh BA di counter, langsung menampilkan riwayat pembelian terbaru pelanggan.
+  - **Scan Barcode BA**: Customer memindai barcode yang ditampilkan di web BA untuk langsung masuk ke halaman splashscreen & login Wardah Beauty Passport.
   - Slogan: *"Your Beauty Journey Our Priority 💙"*

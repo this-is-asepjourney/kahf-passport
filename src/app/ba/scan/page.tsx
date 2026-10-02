@@ -103,6 +103,15 @@ function BaScanAndBarcodeContent() {
   const [isSubmittingPurchase, setIsSubmittingPurchase] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Hydration-safe client states
+  const [isMounted, setIsMounted] = useState(false);
+  const [projectSplashUrl, setProjectSplashUrl] = useState('');
+
+  useEffect(() => {
+    setIsMounted(true);
+    setProjectSplashUrl(window.location.origin);
+  }, []);
+
   // Receipt Modal State
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<Purchase | null>(null);
@@ -714,12 +723,6 @@ function BaScanAndBarcodeContent() {
     };
   }, [activeTab, startCamera, stopCamera]);
 
-  const barcodeCustomerUrl = selectedCustomer
-    ? typeof window !== 'undefined'
-      ? `${window.location.origin}/passport/purchases?c=${selectedCustomer.id}&scanned=true&v=${selectedCustomer.purchaseCount || 0}`
-      : `${selectedCustomer.id}`
-    : '';
-
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-24">
       <canvas ref={canvasRef} className="hidden" />
@@ -739,7 +742,7 @@ function BaScanAndBarcodeContent() {
                 </span>
               </h1>
               <p className="text-white/80 text-xs mt-0.5">
-                Update produk apa saja yang dibeli customer hari ini & tampilkan barcode riwayat belanja untuk di-scan customer
+                Update produk belanja customer hari ini & tampilkan barcode untuk di-scan customer langsung ke splashscreen/login
               </p>
             </div>
           </div>
@@ -752,7 +755,7 @@ function BaScanAndBarcodeContent() {
                 activeTab === 'generate' ? 'bg-white text-[#277A73] shadow-xs' : 'text-white/80 hover:text-white'
               }`}
             >
-              Barcode Riwayat
+              Barcode
             </button>
             <button
               onClick={() => setActiveTab('camera')}
@@ -1411,22 +1414,53 @@ function BaScanAndBarcodeContent() {
 
             {/* Right Column: High-Contrast Barcode for Customer to Scan (5 cols) */}
             <div className="lg:col-span-5 space-y-4">
-              <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm text-center space-y-3 sticky top-6">
+              <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm text-center space-y-4 sticky top-6">
                 <div className="flex items-center justify-center gap-2">
                   <QrCode className="w-5 h-5 text-[#277A73]" />
                   <h3 className="font-bold text-sm text-gray-900">Barcode</h3>
                 </div>
 
-                {selectedCustomer ? (
-                  <div className="space-y-3 animate-in fade-in">
-                    <p className="text-[11px] text-gray-500 leading-snug">
-                      Tunjukkan barcode ini kepada <strong>{selectedCustomer.fullName}</strong> untuk di-scan melalui
-                      aplikasi Beauty Passport mereka.
+                <div className="space-y-3">
+                  <div className="bg-[#E8F6F4]/70 p-3 rounded-2xl border border-[#277A73]/20 text-center">
+                    <p className="text-xs font-bold text-[#277A73]">Scan untuk Menuju Splashscreen / Login</p>
+                    <p className="text-[11px] text-gray-600 mt-1 leading-snug">
+                      Arahkan kamera smartphone customer ke barcode ini untuk langsung diarahkan ke halaman splashscreen & login Wardah Beauty Passport.
                     </p>
+                  </div>
 
-                    {/* QR Code Container */}
-                    <div className="p-3 bg-white rounded-2xl border-2 border-[#277A73]/20 shadow-md inline-block mx-auto transition-transform hover:scale-102">
-                      <QRCode value={barcodeCustomerUrl} size={180} level="H" fgColor="#277A73" />
+                  {/* QR Code Container */}
+                  <div className="p-4 bg-white rounded-2xl border-2 border-[#277A73]/20 shadow-md inline-block mx-auto transition-transform hover:scale-102">
+                    {isMounted ? (
+                      <QRCode value={projectSplashUrl || 'https://wardah.id'} size={190} level="H" fgColor="#277A73" />
+                    ) : (
+                      <div className="w-[190px] h-[190px] bg-gray-50 rounded-xl flex flex-col items-center justify-center gap-2 border border-gray-100">
+                        <QrCode className="w-12 h-12 text-[#277A73]/30 animate-pulse" />
+                        <span className="text-[10px] text-gray-400 font-medium">Memuat Barcode...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <a
+                      href={isMounted ? projectSplashUrl || '/' : '/'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 font-bold text-xs text-[#277A73] hover:text-[#1E6560] bg-[#E8F6F4] px-3.5 py-2 rounded-xl transition-colors shadow-2xs"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Buka Halaman Splashscreen (Preview)</span>
+                    </a>
+                  </div>
+                </div>
+
+                {/* If Customer is selected, show their info and recent purchases below the QR code */}
+                {selectedCustomer ? (
+                  <div className="pt-4 border-t border-gray-100 text-left space-y-3 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-gray-800">Pelanggan Aktif:</p>
+                      <span className="text-[10px] font-bold bg-[#E8F6F4] text-[#277A73] px-2.5 py-0.5 rounded-full">
+                        {selectedCustomer.fullName}
+                      </span>
                     </div>
 
                     {/* Stats summary of current customer */}
@@ -1443,23 +1477,8 @@ function BaScanAndBarcodeContent() {
                       </div>
                     </div>
 
-                    <div className="p-2.5 bg-[#E8F6F4] rounded-2xl text-[11px] text-[#277A73] font-medium leading-relaxed space-y-1 text-left">
-                      <p>
-                        📱 <strong>Customer cukup buka menu &apos;Passport&apos;</strong> di HP dan scan barcode ini untuk melihat riwayat belanja terbarunya secara langsung.
-                      </p>
-                      <a
-                        href={barcodeCustomerUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-bold underline text-[10px] text-[#277A73] hover:text-[#1E6560]"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        <span>Buka Tampilan Pelanggan (Preview)</span>
-                      </a>
-                    </div>
-
                     {/* Past Purchases Summary */}
-                    <div className="text-left border-t border-gray-100 pt-2.5 space-y-1.5">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                           Riwayat Transaksi:
@@ -1515,12 +1534,9 @@ function BaScanAndBarcodeContent() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-8 border-2 border-dashed border-gray-200 rounded-2xl text-center space-y-2">
-                    <span className="text-3xl block mb-1">👈</span>
-                    <p className="font-bold text-xs text-gray-700">Pilih Pelanggan Terlebih Dahulu</p>
-                    <p className="text-[11px] text-gray-400 leading-relaxed">
-                      Gunakan kotak pencarian atau daftar pelanggan di sebelah kiri untuk menampilkan barcode riwayat
-                      belanja mereka.
+                  <div className="pt-3 border-t border-gray-100 text-center">
+                    <p className="text-[11px] text-gray-400">
+                      💡 Tip: Pilih pelanggan di sebelah kiri untuk mencatat pembelian baru atau melihat riwayat belanjanya.
                     </p>
                   </div>
                 )}
@@ -1553,7 +1569,7 @@ function BaScanAndBarcodeContent() {
               onClick={() => setActiveTab('generate')}
               className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-colors"
             >
-              Kembali ke Pembuat Barcode Riwayat
+              Kembali ke Barcode
             </button>
           </div>
         )}

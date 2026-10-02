@@ -15,7 +15,7 @@ import {
   LogOut,
   Menu,
   X,
-  ScanLine,
+  QrCode,
 } from 'lucide-react';
 
 export default function BaLayout({ children }: { children: ReactNode }) {
@@ -28,7 +28,7 @@ export default function BaLayout({ children }: { children: ReactNode }) {
 
   const menuItems = [
     { name: 'Beranda', href: '/ba', icon: Home },
-    { name: 'Scan QR Passport', href: '/ba/scan', icon: ScanLine },
+    { name: 'Barcode', href: '/ba/scan', icon: QrCode },
     { name: 'Customer Database', href: '/ba/customers', icon: Users },
     { name: 'Konsultasi Kulit', href: '/ba/consultation', icon: MessageSquare },
     { name: 'Rekomendasi Produk', href: '/ba/products', icon: Sparkles },
@@ -174,9 +174,9 @@ export default function BaLayout({ children }: { children: ReactNode }) {
             <Link
               href="/ba/scan"
               className="p-2 rounded-xl bg-[#E2F0EF] text-[#2C5C59] hover:bg-[#d4ecea] transition-colors"
-              title="Buka Scanner"
+              title="Buka Barcode"
             >
-              <ScanLine className="w-4 h-4" />
+              <QrCode className="w-4 h-4" />
             </Link>
             <button
               type="button"

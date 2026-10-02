@@ -7,6 +7,7 @@ import { doc, getDoc, collection, query, where, limit, getDocs } from 'firebase/
 import { db } from '@/lib/firebase/client';
 import { formatCompact, formatDate } from '@/lib/utils';
 import Link from 'next/link';
+import { QrCode } from 'lucide-react';
 
 interface BaStats {
   totalCustomers: number;
@@ -226,6 +227,31 @@ export default function BaDashboardPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Quick Barcode Customer Banner */}
+      <div className="bg-gradient-to-r from-[#277A73] to-[#1E6560] rounded-3xl p-6 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
+            <QrCode className="w-7 h-7 text-white" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 inline-block mb-1">
+              Barcode Beauty Passport
+            </span>
+            <h2 className="text-xl font-bold">Barcode Pelanggan (Splashscreen / Login)</h2>
+            <p className="text-white/80 text-xs mt-1 max-w-xl">
+              Tunjukkan barcode ini kepada customer di counter agar saat di-scan langsung diarahkan ke halaman splashscreen & login Wardah Beauty Passport.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/ba/scan"
+          className="shrink-0 px-5 py-3 rounded-2xl bg-white text-[#277A73] hover:bg-white/90 font-bold text-sm shadow-md transition-all flex items-center gap-2"
+        >
+          <QrCode className="w-4 h-4" />
+          <span>Buka Barcode Customer</span>
+        </Link>
       </div>
 
       {/* Main Content Grid */}

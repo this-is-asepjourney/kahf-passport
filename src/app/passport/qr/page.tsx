@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -18,7 +17,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
 } from 'lucide-react';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://wardahbeauty.com';
@@ -94,6 +92,13 @@ export default function QrPage() {
         const url = new URL(data, window.location.origin);
         router.push(url.pathname + url.search);
       } else {
+        try {
+          const parsed = new URL(data);
+          if (parsed.origin === window.location.origin) {
+            router.push(parsed.pathname + parsed.search || '/passport');
+            return;
+          }
+        } catch {}
         router.push(`/passport/purchases?scanned=true&code=${encodeURIComponent(data)}`);
       }
     }, 700);
@@ -155,8 +160,8 @@ export default function QrPage() {
       // Check torch capability
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
-        const capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
-        setHasTorch(Boolean((capabilities as any).torch));
+        const capabilities = videoTrack.getCapabilities ? (videoTrack.getCapabilities() as Record<string, unknown>) : {};
+        setHasTorch(Boolean(capabilities.torch));
       }
 
       if (videoRef.current) {
@@ -168,12 +173,13 @@ export default function QrPage() {
         isScanningActiveRef.current = true;
         animationFrameRef.current = requestAnimationFrame(scanFrame);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Camera error:', err);
-      if (err.name === 'NotAllowedError') {
+      const error = err as Error;
+      if (error?.name === 'NotAllowedError') {
         setCameraError('Izin akses kamera ditolak. Silakan izinkan akses kamera di pengaturan browser.');
       } else {
-        setCameraError('Gagal membuka kamera: ' + (err.message || 'Perangkat tidak tersedia'));
+        setCameraError('Gagal membuka kamera: ' + (error?.message || 'Perangkat tidak tersedia'));
       }
     }
   }, [facingMode, scanFrame, stopCamera]);
@@ -184,7 +190,7 @@ export default function QrPage() {
     try {
       const track = streamRef.current.getVideoTracks()[0];
       if (track) {
-        await (track as any).applyConstraints({
+        await (track as unknown as { applyConstraints: (c: Record<string, unknown>) => Promise<void> }).applyConstraints({
           advanced: [{ torch: !torchOn }],
         });
         setTorchOn(!torchOn);
